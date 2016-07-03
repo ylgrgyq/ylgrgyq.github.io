@@ -13,4 +13,15 @@ baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://ylgrgyq.github.io" # the base hostname & protocol for your site
 
 # Build settings
-markdown: kramdown
+markdown: redcarpet
+# redcarpet:
+  # extensions: ["no_intra_emphasis", "fenced_code_blocks", "autolink", "strikethrough", "superscript", "with_toc_data"]
+redcarpet:
+  extensions:
+    - no_intra_emphasis
+    - fenced_code_blocks
+    - autolink
+    - tables
+    - strikethrough
+    - superscript
+    - with_to_data
