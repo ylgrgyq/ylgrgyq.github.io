@@ -25,3 +25,6 @@ redcarpet:
     - strikethrough
     - superscript
     - with_to_data
+
+gems:
+  - jekyll-seo-tag
