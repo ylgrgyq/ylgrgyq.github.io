@@ -1,6 +1,6 @@
 --- 
 layout: post
-title:  "Garbage First Collection 理解"
+title:  "Garbage First Collector 理解"
 date:   2016-07-03 15:39:30 +0800
 --- 
 
