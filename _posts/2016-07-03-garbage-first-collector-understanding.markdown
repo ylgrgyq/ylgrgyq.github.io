@@ -1,7 +1,10 @@
 --- 
 layout: post
 title:  "Garbage First Collector 理解"
+description: "较为详细的介绍一下 Garbage First Collector 中各种细枝末节"
+category: JVM
 date:   2016-07-03 15:39:30 +0800
+tags: [JVM, JAVA]
 --- 
 
 # 总览
