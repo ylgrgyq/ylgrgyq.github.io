@@ -248,7 +248,7 @@ x.f = y
 
 也就是说修改了 x 这个 object 中 f 这个引用，另其指向了 y 。那么 x.f 原本指向的 object 可能死亡了也可能还活着，根据 SATB 的要求，需要将其标记为 live。pre-write 的代码逻辑类似：
 
-```
+```java
 if (is-marking-active) {
   prev = x.f;
   if (prev != Null) {
