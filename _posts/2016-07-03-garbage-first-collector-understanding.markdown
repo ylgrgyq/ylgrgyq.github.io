@@ -126,9 +126,9 @@ coarse 级别的 PRT 实际就是个 Bitmap，该 Bitmap 上每个 bit 代表当
 
 RSet 在 Parallel Old 和 CMS GC 中也有使用，他们是通过 write barrier 来在 Region 内引用有更新的时候去对应的维护 RSet 的。
 
-```
+{% highlight java %}
 object.field = some_other_object
-```
+{% endhighlight %}
 
 在执行例如上面语句的时候去更新 intergenerational reference。
 
@@ -242,20 +242,20 @@ Root Region Scanning 必须在下一次 YGC 之前完成，不然 Survivor 又�
 
 比如在 concurrent marking 过程中，业务线程执行如下语句：
 
-```
+{% highlight java %} 
 x.f = y
-```
+{% endhighlight %}
 
 也就是说修改了 x 这个 object 中 f 这个引用，另其指向了 y 。那么 x.f 原本指向的 object 可能死亡了也可能还活着，根据 SATB 的要求，需要将其标记为 live。pre-write 的代码逻辑类似：
 
-```java
+{% highlight java %} 
 if (is-marking-active) {
   prev = x.f;
   if (prev != Null) {
     satb_enqueue(prev);
   }
 }
-```
+{% endhighlight %} 
 
 也就是说如果在 marking 过程中，x.f 的引用发生改变，需要将 x.f 原本指向的 object 放入 satb_enqueuey 以异步的方式将 x.f 原本指向的 Object 标记为 live。
 
