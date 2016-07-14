@@ -1,0 +1,70 @@
+==================================================================
+https://keybase.io/ylgrgyq
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of https://ylgrgyq.github.io
+  * I am ylgrgyq (https://keybase.io/ylgrgyq) on keybase.
+  * I have a public key with fingerprint D727 AB30 CEF7 759C 1ABF  DACD 3D50 8DBE 210B DF2C
+
+To do so, I am signing this object:
+
+{
+    "body": {
+        "key": {
+            "eldest_kid": "0101086217df31a41e383ada772c523b3598fb05fd889b0b3ccc9eccbb82a70636810a",
+            "fingerprint": "d727ab30cef7759c1abfdacd3d508dbe210bdf2c",
+            "host": "keybase.io",
+            "key_id": "3d508dbe210bdf2c",
+            "kid": "0101086217df31a41e383ada772c523b3598fb05fd889b0b3ccc9eccbb82a70636810a",
+            "uid": "56ccf3e0f5a670b362dd860924011119",
+            "username": "ylgrgyq"
+        },
+        "service": {
+            "hostname": "ylgrgyq.github.io",
+            "protocol": "https:"
+        },
+        "type": "web_service_binding",
+        "version": 1
+    },
+    "ctime": 1468465854,
+    "expire_in": 157680000,
+    "prev": "56999f415c099a92a953b0c4b641f2c07048248fc02484a92366dad194966419",
+    "seqno": 3,
+    "tag": "signature"
+}
+
+which yields the signature:
+
+-----BEGIN PGP MESSAGE-----
+Version: Keybase OpenPGP v2.0.53
+Comment: https://keybase.io/crypto
+
+yMImAnicrZJdSBRRFMd3S4uMwLaEPhBrHspC5M73zIpiPoTRBwRFhcl2v2Z3ct1Z
+Z8atrayIyqJe+iCqtYiE0igtokKqbQtDo0KDCjKTCoJ6MMKHsC/pzlYPQY+dC/dy
+z/2d/z3ncLqnjPfl+eevhu05G30z/Q/vphp9a5rHpbdyyCJJLriVq6PZg0YJddxQ
+nUm4IAd4tjRF4FViiDyUeCpqIiRQVQUsCyISZV0zEJANomk6AkjEGOsUY4Q0AapA
+ERWNB5Ar4QwzFqZ23DZjLpMlqqBCJAJMDVWVdcxDZBCIiUhkoBFEBR4gYgiYBUYs
+x4tgySHo0FLTYj52CWXT+wf/n/NuzMrJCsaGSIEhQ0VltCIQoilAFyTAM9M90KF2
+DNZTRiejYTucbOCaSjjmTJiYen31CvkbKA2bbqQR/aopbluuha0oe464btwJeuFu
+Mu7xmygK/VYKITNGWC9ZRILajmnFuCDPSOyanjQvKZqkyJoslXB0c9y0acj0CFlV
+NMDM+4cmshXpum5IvIyBrkNdgLosIoAlpEg8ayRQgaQJkmZgwHaJAaKiEEh4XdIV
+hngVO7QhZnFBkaUJw0zSMcMx6DbalGu6l1mf4/Pn+SbkjvNmzJc3Kf/P5AWnTfyW
+e/nGcM/YstdDowW3Hu3MnHxp7ZOqPxffm7yhqyaaD94q58cvabsS+HRwYFHqUPn0
+axdDhzs2Ph68u+tsTnj/hi/XqwN8X7v/ZFVZ+ujqseetqaHWVULH9t1yvK4iPXZ6
+97EX+yJ9N8vM0e5Hg0+Heuw3hfVXU1FrxhR9+8GMP//A/PSdr+2VlT73yLtL5SNC
+xjz04f77zlMj/Wt3LOYqp9Ys33Oh1VhRlXt84G1Bcw1cOrq3Xwsi5VVh25wFH1f2
+VxQ+6NrbUFS0EBe7s5qDVYmWJ4mV5bUF2070Ldo/nD/74pZA77OFtZm5mnlGvP1j
+3rnOQPWelqJ1N3u/n5AGux6+jv8EaNlASA==
+=E9OI
+-----END PGP MESSAGE-----
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/ylgrgyq
+
+==================================================================
+
+
