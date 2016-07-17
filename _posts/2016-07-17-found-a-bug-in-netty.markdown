@@ -6,7 +6,7 @@ date:   2016-07-17 08:21:30 +0800
 tags: [NETTY, JAVA]
 --- 
 
-本文记述了一次查找 Netty bug 的过程。给 Netty 提的 issue 在这里：https://github.com/netty/netty/issues/5372 有兴趣的可以参考。
+本文记述了一次查找 Netty bug 的过程。给 Netty 提的 [issue 在这里](https://github.com/netty/netty/issues/5372) 有兴趣的可以参考。
 
 # 起因
 
@@ -51,7 +51,7 @@ Finalizer 引用的存在是因为 OpenSslClientContext Overide 了 finalize met
 
 看到一方面它包含有指向外部 OpenSslClientContext 的引用 this$0，还包含一个叫做 val$extendedManager 的引用指向一个 sun.security.ssl.X509TrustManagerImpl 的对象。这时候去翻看 Netty 4.1.1-Final 的 OpenSslClientContext 第 240 ~ 268 行代码如下 (注意现在的 Netty 4.1 分支已经将这个 bug 修复，所以不能直接看到下面的代码了)：
 
-{% highlight java %}
+{% highlight java linenos %}
 try {
     if (trustCertCollection != null) {
         trustManagerFactory = buildTrustManagerFactory(trustCertCollection, trustManagerFactory);
@@ -91,14 +91,14 @@ try {
 找到 SSLContext.setCertVerifyCallback 的代码。在我们使用的 netty-tcnative-1.1.33.Fork17 中，SSLContext.setCertVerifyCallback 函数的声明如下：
 
 {% highlight java %}
-    /**
-     * Allow to hook {@link CertificateVerifier} into the handshake processing.
-     * This will call {@code SSL_CTX_set_cert_verify_callback} and so replace the default verification
-     * callback used by openssl
-     * @param ctx Server or Client context to use.
-     * @param verifier the verifier to call during handshake.
-     */
-    public static native void setCertVerifyCallback(long ctx, CertificateVerifier verifier);
+/**
+ * Allow to hook {@link CertificateVerifier} into the handshake processing.
+ * This will call {@code SSL_CTX_set_cert_verify_callback} and so replace the default verification
+ * callback used by openssl
+ * @param ctx Server or Client context to use.
+ * @param verifier the verifier to call during handshake.
+ */
+public static native void setCertVerifyCallback(long ctx, CertificateVerifier verifier);
 {% endhighlight %}
 
 从注释上能看出来，这个函数是用来让用户自定义证书检查函数，以在 SSL Handshake 过程中使用这个自定义检查函数去校验证书。
@@ -107,7 +107,7 @@ try {
 
 有了指导路线，我们继续追踪问题。在 netty-tcnative-1.1.33.Fork17 的 sslcontext.c 文件下找到 setCertVerifyCallback 函数对应的 Native 代码如下：
 
-{% highlight c %}
+{% highlight c linenos %}
 TCN_IMPLEMENT_CALL(void, SSLContext, setCertVerifyCallback)(TCN_STDARGS, jlong ctx, jobject verifier)
 {
     tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);
@@ -141,12 +141,12 @@ TCN_IMPLEMENT_CALL(void, SSLContext, setCertVerifyCallback)(TCN_STDARGS, jlong c
 在搜索 sslcontext.c 的代码后发现正常的逻辑下，要对 verifier 调用 DeleteGlobalRef 将其清理，必须调用 SSLContext.free 函数才能实现。SSLContext.free 声明如下：
 
 {% highlight java %}
-    /**
-     * Free the resources used by the Context
-     * @param ctx Server or Client context to free.
-     * @return APR Status code.
-     */
-    public static native int free(long ctx);
+/**
+ * Free the resources used by the Context
+ * @param ctx Server or Client context to free.
+ * @return APR Status code.
+ */
+public static native int free(long ctx);
 {% endhighlight %}
 
 它还有个对应的 make 函数，合并起来用于负责 OpenSslClientContext 分配和回收一些 Native 的资源。OpenSslClientContext 在构造函数中必须调用一次 SSLContext.make，在对象被销毁时需要调用 SSLContext.free。“在对象被销毁时调用”这个听上去有点析构函数的意思，Java 中没有析构函数的概念，看上去 Netty 也没有好的实现这种类似析构函数功能的办法，虽然所有讲到 finalize 的地方都是在谆谆告诫只是知道有这么个东西就好永远不要使用它，Netty 还是“被逼无奈”将用于资源回收的 SSLContext.free 调用放在了 OpenSslClientContext 的 finalize (继承自 OpenSslContext)函数中。
