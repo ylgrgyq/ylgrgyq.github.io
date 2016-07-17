@@ -27,7 +27,7 @@ tags: [NETTY, JAVA]
 ## 顺藤摸瓜
 
 不是内存池出现泄露，且泄露是堆内堆外一起泄露，会堆内堆外内存一起占用的对象一般不多，不过一时也想不出到底有哪些，于是随手 dump 了一份堆内存快照开始分析。果不其然，dump 中还真看出了些端倪。一般情况下，通过 dump 排查内存泄露都是使用 [Eclipse Memory Analyzer Tool](http://www.eclipse.org/mat/) (简称 MAT) 去看 dominator tree，看是哪个类的对象不正常的占用了大量的内存。但这次看 dominator tree 是看不出什么问题的，因为出现泄露的对象在堆上占用的总内存并不是很多，它在 dominator tree 上根本排不到前列，很难被关注到。但是在 Histogram 中就有它的身影了：
-![屏幕快照 2016-07-17 上午7.40.25.png](quiver-image-url/C6062CBEF854BC10DE6E7D061D80BDA0.png)
+![2016-07-17 7 40 25](https://cloud.githubusercontent.com/assets/1115061/16897985/53d4ae34-4bf8-11e6-8170-acc9eee1a42c.png)
 
 出现泄露的就是上图画红框圈起来的 OpenSslClientContext。
 
@@ -38,7 +38,7 @@ tags: [NETTY, JAVA]
 ## 水落石出
 
 依然是使用 MAT，分析指向泄露的 OpenSslClientContext 对象的引用路径后得到如下图：
-![屏幕快照 2016-07-13 上午7.27.37.png](quiver-image-url/BDAD7BD7E0061FAED3197036ADD113C8.png)
+![2016-07-13 7 27 37](https://cloud.githubusercontent.com/assets/1115061/16897983/472ae7fc-4bf8-11e6-8a69-a311827348b0.png)
 
 看到这个 OpenSslClientContext 对象只被两个引用指向，一个是 Finalizer 上的引用，一个是 Native Stack 上的引用。这也证明了我们的业务对象有正确的释放对 OpenSslClientContext 的引用。
 
@@ -47,7 +47,7 @@ Finalizer 引用的存在是因为 OpenSslClientContext Overide 了 finalize met
 而 Native Stack 就是 GC Root ，被其引用的对象是不能被 GC 的。这个也就是 OpenSslClientContext 泄露的源头。从这个 Native Stack 指向的对象的类名 OpenSslClientContext$1 能看出，这是一个 OpenSslClientContext 上的匿名类。
 
 查看这个匿名类的对象的属性：
-![屏幕快照 2016-07-13 上午9.57.15.png](quiver-image-url/01C5B25BA66E78F2422C0AB66976F835.png)
+![2016-07-13 9 57 15](https://cloud.githubusercontent.com/assets/1115061/16897981/426fd038-4bf8-11e6-95d7-6b657213c973.png)
 
 看到一方面它包含有指向外部 OpenSslClientContext 的引用 this$0，还包含一个叫做 val$extendedManager 的引用指向一个 sun.security.ssl.X509TrustManagerImpl 的对象。这时候去翻看 Netty 4.1.1-Final 的 OpenSslClientContext 第 240 ~ 268 行代码如下 (注意现在的 Netty 4.1 分支已经将这个 bug 修复，所以不能直接看到下面的代码了)：
 
