@@ -11,12 +11,10 @@ tags: [JVM, JAVA]
 
 缩写约定：
 
-| 缩写 | 含义 |
-| -----|----- |
-| YGC  | Young Generation GC |
-| OGC  | 针对 Old Generation 的 GC，对 G1 来说指 Mixed GC |
-| FGC  | 针对整个 Heap 的 Full GC |
-| STW  | Stop-The-World |
+YGC: Young Generation GC
+OGC: 针对 Old Generation 的 GC，对 G1 来说指 Mixed GC
+FGC: 针对整个 Heap 的 Full GC
+STW: Stop-The-World
 
 ## 特点
 
