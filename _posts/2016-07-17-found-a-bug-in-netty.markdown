@@ -1,10 +1,11 @@
 ---                                                                                                                                                                                                     
 layout: post
-title:  "一次追查 Netty bug 过程记录" 
+title:  "追踪 Netty 异常占用堆外内存的经验分享" 
 category: JAVA
 date:   2016-07-17 08:21:30 +0800
 tags: [NETTY, JAVA]
 --- 
+
 本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 [Netty](http://netty.io) 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。
 
 从现象上分析，我们能确定一定是服务内部有地方出现了内存泄露。在这个出问题的服务上有大量的网络 IO 操作，为了优化性能，我们使用了 PooledByteBufAllocator 来分配 PooledDirectByteBuf。因为是堆外内存泄露，所以第一种可能就是我们在某个地方分配了内存但忘记了释放。我们仔细检查了与业务相关的 ChannelHandler 但并未发现问题，于是又将 Netty 的 io.netty.leakDetectionLevel 设置到 Advanced 级别，放在 Beta 环境上进行测试。在服务连续运行了几天并即将因内存不足再次重启之前，我们从日志中也没有发现任何由 Netty 打出来的内存泄露的报警信息。随后我们又将 io.netty.leakDetectionLevel 设置到 Paranoid 来重新测试，但依然没有发现有关 Netty 内存泄露的相关日志。
