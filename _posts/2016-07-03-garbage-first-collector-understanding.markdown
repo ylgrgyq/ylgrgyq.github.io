@@ -21,8 +21,8 @@ STW: Stop-The-World
 
 ## 特点
 
-1. G1 的 Heap 划分为多个 Region，Young Generation 和 Old Generation 都只是逻辑概念，不是物理上隔离又连续的空间
-2. 适合大堆，因为不像 CMS 和 Parallel GC 在对老代进行收集的时候需要将整个老代全部收集，G1 收集老代一次只收集老代的一部分 Region
+1. 适合大堆，因为不像 CMS 和 Parallel GC 在对老代进行收集的时候需要将整个老代全部收集，G1 收集老代一次只收集老代的一部分 Region
+2. G1 的 Heap 划分为多个 Region，Young Generation 和 Old Generation 都只是逻辑概念，不是物理上隔离又连续的空间
 3. G1 的新老代划分不是固定的，一个新代的 Region 在被回收之后可以作为老代 Region 使用，Young Generation 和 Old Generation 大小也会随着系统运行而调整
 4. G1 的新生代收集和 Parallel、CMS GC 一样是并发的 STW 收集，且每次 YGC 会将整个 Young Generation 收集
 5. G1 的 Old Generation 收集每次只收集一部分 Old Region，且这部分 Old Region 是和 YGC 一起进行的，所以称为 Mixed GC
@@ -36,9 +36,9 @@ G1 的 Young Generation 逻辑上也划分为 Eden 和 Survivor。新生 Object 
 
 ## TLAB
 
-既然 “新生对象都分配在 Eden”，而 Eden 是个全局的概念，应用内会申请分配内存创建新生对象的业务线程有很多，如果分配内存操作全部由这些业务线程直接去操作 Eden 就一定会产生竞争，因为属于 Eden 的 Region 是一个一个分配的，一个 Region 占满了才会去分配新的 Region。而竞争的存在就导致要用锁去保护 Eden ，才能保证多线程并发的从 Eden 分配内存不出问题。而由于分配内存这个操作会非常频繁，只是用锁去保护 Eden 会出现大量的线程去抢占这个保护 Eden 的锁。所以有了 TLAB，Thread Local Allocation Buffer， 这么个优化，去减少业务进程对保护 Eden 的锁的竞争。
+既然 “新生对象都分配在 Eden”，而 Eden 是个全局的概念，应用内会申请分配内存创建新生对象的业务线程有很多，如果分配内存操作全部由这些业务线程直接去操作 Eden 就一定会产生竞争，因为属于 Eden 的 Region 是一个一个分配的，一个 Region 占满了才会去分配新的 Region。而竞争的存在就导致要用锁去保护 Eden ，才能保证多线程并发的从 Eden 分配内存不出问题。由于分配内存这个操作会非常频繁，只是用锁去保护 Eden 会出现大量的线程去抢占这个保护 Eden 的锁。所以有了 TLAB，Thread Local Allocation Buffer， 这么个优化，去减少业务进程对保护 Eden 的锁的竞争。
 
-Eden 中按照一定比例有一部分内存会划拨出来专门给 TLAB 使用，每个线程都有自己的 TLAB，这块内存是线程自己独占的，为的就是线程在分配内存的时候可以直接从 TLAB 上不用加锁的获取内存，只有要分配的内存较大，超出了 TLAB 范围时才需要从 Eden 中以加锁的方式获取内存，或者如果特别大超过了 Region 的 50%，会作为 Humongous Object 专门划拨 Region 存放。
+Eden 中有一部分内存会划拨出来专门给 TLAB 使用，每个线程都有自己的 TLAB，这块内存是线程自己独占的，为的就是线程在分配内存的时候可以直接从 TLAB 上分配， 不用加锁。只有要分配的内存较大，超出了 TLAB 范围时才需要从 Eden 中以加锁的方式获取内存，或者如果特别大超过了 Region 的 50%，会作为 Humongous Object 专门划拨 Region 存放。
 
 ## YGC
 
@@ -59,13 +59,18 @@ Young Generation Object 每熬过一次 GC，age 就增长一岁。G1 会维护�
 上面看到 YGC 触发时机是在 Eden 被占满时，而 Eden 在 Young Generation 中占比最大，也就是说 Young Generation 的大小会影响到 YGC 触发时间和频率。
 
 有三个量会影响到 Young Generation 大小：
-
-* -XX:G1NewSizePercent 初始 Young Generation 大小，默认 5%
+* -XX:G1NewSizePercent 初始 Young Generation 大小，也是 Young Generation 的最小大小，默认 5%
 * -XX:G1MaxNewSizePercent Young Generation 最大大小，默认 60%
 * -XX:MaxGCPauseMillis GC 最大停顿时间，默认 200ms
 
-MaxGCPauseMillis 会影响到 Young Generation 大小是因为 MaxGCPauseMillis 越小，留给 GC 的 STW 的时间越少，则趋向于减少 Young Generation 大小以减少 YGC STW 时间。每次 YGC 完毕，都会根据上面三个量和 G1 内部的一些统计量去计算 Young Generation 大小，然后实现 Young Generation 扩展或收缩。这个变化会提现在 GC 日志当中:
-![2016-06-29 1 12 19](https://cloud.githubusercontent.com/assets/1115061/16544438/b174f442-4138-11e6-9461-867fdebbbc08.png)
+Young Generation 的大小只能在 -XX:G1NewSizePercent 和 -XX:G1MaxNewSizePercent 规定的范围内变化。
+
+MaxGCPauseMillis 会影响到 Young Generation 大小是因为 MaxGCPauseMillis 越小，留给 GC 的 STW 的时间越少，则趋向于减少 Young Generation 大小以减少 YGC STW 时间。每次 YGC 完毕，都会根据上面三个量和 G1 内部的一些统计量去计算 Young Generation 大小，然后实现 Young Generation 扩展或收缩。
+
+MaxGCPauseMillis 也不是越小越好。MaxGCPauseMillis 越小，Young Generation 也越小，从而有更多本来是 short-live 的 object 被过早晋升到 Old Generation。而 Old Generation GC 起来比较麻烦，标记清理过程比 Young Generation GC 要复杂的多，整体效率也低，就导致虽然 GC 停滞时间下降了，但 GC 次数可能增多，整体吞吐量下降的情况。并且 GC 次数增多也会导致对 CPU 占用增加，跟业务线程一起抢 CPU。
+
+Young Generation 的扩展或收缩在 GC 日志当中会体现:
+![image](https://cloud.githubusercontent.com/assets/1115061/17271377/80db9c1c-56ac-11e6-9ba2-eb69502aff42.png)
 
 上图看到 Eden 从 8008M 降低到 7936M，同样 Survivor 也有类似变化。而总 Heap 大小因为 -Xmx 和 -Xms 参数都调的 14G 所以 YGC 前后不会出现变化。
 
@@ -73,24 +78,24 @@ MaxGCPauseMillis 会影响到 Young Generation 大小是因为 MaxGCPauseMillis 
 
 # RSet
 
-G1 也属于分代收集器，G1 是从逻辑上划分 Young Generation 和 Old Generation，没有从物理存储空间上将不同代隔离开 ( Region 可以在 Old 和 Young Generation 之间切换)。分代收集的好处就是将 long-live object 和 short-live object 分开收集，从而不用每次 GC 都扫描整个 Heap，降低 GC 时间。
+G1 也属于分代收集器，G1 是从逻辑上划分 Young Generation 和 Old Generation，没有从物理存储空间上将不同代隔离开 ( Region 可以在 Old 和 Young Generation 之间切换)。分代收集的好处就是将 long-live object 和 short-live object 分开收集，从而不用每次 GC 都扫描整个 Heap，降低 GC 时间。那么 YGC 的时候，放入 CSet (一次 GC 中参与收集的所有 Region 组成的集合叫做 CSet)的只有 Young Generation Region，所有 Old Generation Region 都不会参与 YGC。于是就需要有机制去保证 Young Generation 上的 Object 在被 Old Generation Region 上某个 Object 引用时，这个 Young Generation 上的 Object 不能在 YGC 的时候被 GC 掉。所以需要有个地方能记录每个 Object 都被哪些引用指向，这些引用来自哪个 Region。
 
-G1 在一般意义上的分代收集的基础上更进一步，每次 Mixed GC 是整个 Young Generation 的 Region 和一部分 Old Generation Region 参与收集，一次 GC 中参与收集的所有 Region 组成的集合叫做 CSet。那么 CSet 内的 Region 上某个 Object A 被不在 CSet 内 Region 上的另一个 Object B 引用时，A 这个 Object 不能被收集掉。比如说一个在 Young Generation 的对象，被一个 Old Generation 对象引用，YGC 时这个 Young Generation 对象不能被收集掉。
+另一方面，YGC 和 OGC 在执行完后都会有 live object 被搬迁到新的 Free Region 上，那么指向这些 live object 的引用就会发生变化，需要更新引用让其重新指向这个 live object 的新地址。所以也需要上述这个记录每个 Object 被哪些引用指向的机制，从而在 GC 后去更新引用。
 
-所以，需要为每个 Region 维护一个列表，内容是当前 Region 之外，有哪些 Region 有指向当前 Region 的引用。这个表就是 Remember Sets，也叫 RSet. 没有这个 RSet 的话，拿 YGC 来说，每一次 YGC 在扫描完 Root 之后，都要再扫描一遍当前所有 Old Generation Region 以找出从 Old Generation 指向 Young Generation 的引用。
+G1 中每个 Region 都会维护一个 Remember Sets，也叫 RSet，用于记录当前 Region 之外，有哪些 Region 有指向当前 Region 的引用。没有这个 RSet 的话，单拿 YGC 来说，每一次 YGC 在扫描完 Root 之后，都要再扫描一遍当前所有 Old Generation Region 以找出从 Old Generation 指向 Young Generation 的引用。
 
 **注意：**看到 RSet 只会记录别的 Region 对本 Region 的引用，自己 Region 内部的引用无需 RSet 参与记录。
 
 ## RSet 内引用构建
 
-既然 RSet 是必须要有的，接下来就看看 RSet 内有哪些引用，这些引用是如何维护的。
+既然 RSet 是必须要有的，接下来就看看 RSet 内是怎么对引用关系进行记录的。
 
 因为每次 YGC 都会将整个 Young Generation 都放入 CSet，不存在哪个属于 Young Generation 的 Region 不参与 YGC 的情况。所以对 Heap 上的所有 Region 来说，被 Young Generation 内 Object 的引用指向是不需要记录到 RSet 中的。于是，RSet 内需要维护的引用只有两种：
 
 * Old-to-young refernence
 * Old-to-old refernence. 
 
-![2016-07-03 12 23 19](https://cloud.githubusercontent.com/assets/1115061/16544442/d1748c76-4138-11e6-902d-7c37b6bb0843.png)
+![image](https://cloud.githubusercontent.com/assets/1115061/17271397/db5d8952-56ac-11e6-8fae-3fd7c772aead.png)
 (图片来自参考文献[1])
 
 看到上面图中，x Region 是 Young Region，y、z 是 Old Region。每个 Region 都有个配套的 RSet，x 的 RSet 有个指向 z 的记录，因为 z 是 Old  且有指向 x 的引用。z 虽然被 x 和 y 两个 Region 上的引用指向，但因为 x 是 Young Region，所以 z 的 RSet 中只有指向 y 的记录。同样的方式分析，y 的 RSet 没有任何记录，因为 y 只有被 x 指向的引用。
