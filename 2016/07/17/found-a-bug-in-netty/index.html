@@ -3,24 +3,24 @@
 <head>
   <meta charset="utf-8">
   
-  <title>Ylgrgyq Blog</title>
+  <title>追踪 Netty 异常占用堆外内存的经验分享 | Ylgrgyq Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="layout: posttitle:  “追踪 Netty 异常占用堆外内存的经验分享”category: JAVAdate:   2016-07-17 08:21:30 +0800
-tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 Netty 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存">
+  <meta name="description" content="本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 Netty 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。
+从现象上分析，我们能确定一定是服务内部有地方出现了内存泄露。在这个出问题的服务上有大量的">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Ylgrgyq Blog">
-<meta property="og:url" content="http://yoursite.com/2017/03/21/2016-07-17-found-a-bug-in-netty/index.html">
+<meta property="og:title" content="追踪 Netty 异常占用堆外内存的经验分享">
+<meta property="og:url" content="http://yoursite.com/2016/07/17/found-a-bug-in-netty/index.html">
 <meta property="og:site_name" content="Ylgrgyq Blog">
-<meta property="og:description" content="layout: posttitle:  “追踪 Netty 异常占用堆外内存的经验分享”category: JAVAdate:   2016-07-17 08:21:30 +0800
-tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 Netty 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存">
+<meta property="og:description" content="本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 Netty 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。
+从现象上分析，我们能确定一定是服务内部有地方出现了内存泄露。在这个出问题的服务上有大量的">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16897985/53d4ae34-4bf8-11e6-8170-acc9eee1a42c.png">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16897983/472ae7fc-4bf8-11e6-8a69-a311827348b0.png">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16897981/426fd038-4bf8-11e6-95d7-6b657213c973.png">
-<meta property="og:updated_time" content="2017-03-21T05:39:22.000Z">
+<meta property="og:updated_time" content="2017-03-28T06:03:34.000Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Ylgrgyq Blog">
-<meta name="twitter:description" content="layout: posttitle:  “追踪 Netty 异常占用堆外内存的经验分享”category: JAVAdate:   2016-07-17 08:21:30 +0800
-tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 Netty 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存">
+<meta name="twitter:title" content="追踪 Netty 异常占用堆外内存的经验分享">
+<meta name="twitter:description" content="本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 Netty 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。
+从现象上分析，我们能确定一定是服务内部有地方出现了内存泄露。在这个出问题的服务上有大量的">
 <meta name="twitter:image" content="https://cloud.githubusercontent.com/assets/1115061/16897985/53d4ae34-4bf8-11e6-8170-acc9eee1a42c.png">
   
     <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
@@ -59,9 +59,9 @@ tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事
       </nav>
       <nav id="sub-nav">
         
-          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="Flux RSS"></a>
         
-        <a id="nav-search-btn" class="nav-icon" title="Zoeken"></a>
+        <a id="nav-search-btn" class="nav-icon" title="Rechercher"></a>
       </nav>
       <div id="search-form-wrap">
         <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
@@ -70,21 +70,29 @@ tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事
   </div>
 </header>
       <div class="outer">
-        <section id="main"><article id="post-2016-07-17-found-a-bug-in-netty" class="article article-type-post" itemscope itemprop="blogPost">
+        <section id="main"><article id="post-found-a-bug-in-netty" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2017/03/21/2016-07-17-found-a-bug-in-netty/" class="article-date">
-  <time datetime="2017-03-21T05:39:22.000Z" itemprop="datePublished">2017-03-21</time>
+    <a href="/2016/07/17/found-a-bug-in-netty/" class="article-date">
+  <time datetime="2016-07-17T00:21:30.000Z" itemprop="datePublished">2016-07-17</time>
 </a>
     
   </div>
   <div class="article-inner">
     
     
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      追踪 Netty 异常占用堆外内存的经验分享
+    </h1>
+  
+
+      </header>
+    
     <div class="article-entry" itemprop="articleBody">
       
-        <hr>
-<p>layout: post<br>title:  “追踪 Netty 异常占用堆外内存的经验分享”<br>category: JAVA<br>date:   2016-07-17 08:21:30 +0800</p>
-<h2 id="tags-NETTY-JAVA"><a href="#tags-NETTY-JAVA" class="headerlink" title="tags: [NETTY, JAVA]"></a>tags: [NETTY, JAVA]</h2><p>本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 <a href="http://netty.io" target="_blank" rel="external">Netty</a> 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。</p>
+        <p>本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 <a href="http://netty.io" target="_blank" rel="external">Netty</a> 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。</p>
 <p>从现象上分析，我们能确定一定是服务内部有地方出现了内存泄露。在这个出问题的服务上有大量的网络 IO 操作，为了优化性能，我们使用了 PooledByteBufAllocator 来分配 PooledDirectByteBuf。因为是堆外内存泄露，所以第一种可能就是我们在某个地方分配了内存但忘记了释放。我们仔细检查了与业务相关的 ChannelHandler 但并未发现问题，于是又将 Netty 的 io.netty.leakDetectionLevel 设置到 Advanced 级别，放在 Beta 环境上进行测试。在服务连续运行了几天并即将因内存不足再次重启之前，我们从日志中也没有发现任何由 Netty 打出来的内存泄露的报警信息。随后我们又将 io.netty.leakDetectionLevel 设置到 Paranoid 来重新测试，但依然没有发现有关 Netty 内存泄露的相关日志。</p>
 <p>在排查过程中，我们也发现虽然引起服务重启的原因是堆外内存不足，但实际堆内内存也有小幅度攀升。起初我们以为这是正常现象，因为有使用 PooledByteBufAllocator，这种 Allocator 为了减少堆外内存的重复分配，会在服务内部建立一个堆外内存池，每次分配内存优先从内存池分配，只有内存池没有足够内存时候，才会去堆外分配新内存。内存池上的内存虽然在堆外，但维护内存池的数据结构却是在堆上。随着堆外内存分配的增多，内部维护内存池的数据结构也会相应增大，堆内内存也会有所升高。为了验证这个猜想，我们将 io.netty.allocator.type 设置为 unpooled 再去测试，几天后发现堆内内存依旧会小幅度攀升，从而判定内存泄露并不是由内存池而导致。</p>
 <h2 id="顺藤摸瓜"><a href="#顺藤摸瓜" class="headerlink" title="顺藤摸瓜"></a>顺藤摸瓜</h2><p>不是内存池出现泄露，而且堆内堆外一起泄露，能同时占用堆内堆外内存的对象一般不多，不过一时也想不出到底有哪些，于是随手 dump 了一份堆内存快照开始分析，果不其然从中还真看出了些端倪。一般通过 dump 排查内存泄露都使用 <a href="http://www.eclipse.org/mat/" target="_blank" rel="external">Eclipse Memory Analyzer Tool</a>（简称 MAT）去检查 dominator tree，从中找出哪个类的对象不正常地占用了大量内存。但这次的 dominator tree 看不出有什么问题。因为出现泄露的对象在堆上占用的总内存并不是很多，它在 dominator tree 上根本排不到前列，很难被关注到，但是在 Histogram（如下图）中就有它的身影了。</p>
@@ -125,9 +133,11 @@ tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2017/03/21/2016-07-17-found-a-bug-in-netty/" data-id="cj0rpate00005plwxqpdw75r4" class="article-share-link">Delen</a>
+      <a data-url="http://yoursite.com/2016/07/17/found-a-bug-in-netty/" data-id="cj0t5lfef0000hqwxdrnyl2tj" class="article-share-link">Partager</a>
       
       
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
+
     </footer>
   </div>
   
@@ -135,18 +145,18 @@ tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事
 <nav id="article-nav">
   
     <a href="/2017/03/27/persistent-queue/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Nieuwer</strong>
+      <strong class="article-nav-caption">Récent</strong>
       <div class="article-nav-title">
         
-          persistent-queue
+          不可变队列的实现
         
       </div>
     </a>
   
   
-    <a href="/2017/03/21/2016-07-03-garbage-first-collector-understanding/" id="article-nav-older" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Ouder</strong>
-      <div class="article-nav-title"></div>
+    <a href="/2016/07/03/garbage-first-collector-understanding/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Ancien</strong>
+      <div class="article-nav-title">Garbage First Collector 理解</div>
     </a>
   
 </nav>
@@ -163,9 +173,9 @@ tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Labels</h3>
+    <h3 class="widget-title">Mot-clés</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
     </div>
   </div>
 
@@ -173,18 +183,18 @@ tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Tag Cloud</h3>
+    <h3 class="widget-title">Nuage de mot-clés</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a>
+      <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a>
     </div>
   </div>
 
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Archieven</h3>
+    <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li></ul>
     </div>
   </div>
 
@@ -192,24 +202,20 @@ tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Recente berichten</h3>
+    <h3 class="widget-title">Articles récents</h3>
     <div class="widget">
       <ul>
         
           <li>
-            <a href="/2017/03/27/persistent-queue/">persistent-queue</a>
+            <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
           </li>
         
           <li>
-            <a href="/2017/03/21/2016-07-17-found-a-bug-in-netty/">(no title)</a>
+            <a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
           </li>
         
           <li>
-            <a href="/2017/03/21/2016-07-03-garbage-first-collector-understanding/">(no title)</a>
-          </li>
-        
-          <li>
-            <a href="/2017/03/21/hello-world/">Hello World</a>
+            <a href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a>
           </li>
         
       </ul>
@@ -225,7 +231,7 @@ tags: [NETTY, JAVA]本文记述了定位 Netty 的一处漏洞的全过程。事
   <div class="outer">
     <div id="footer-info" class="inner">
       &copy; 2017 ylgrgyq<br>
-      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+      Propulsé by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>
 </footer>

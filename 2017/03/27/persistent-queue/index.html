@@ -3,21 +3,21 @@
 <head>
   <meta charset="utf-8">
   
-  <title>persistent-queue | Ylgrgyq Blog</title>
+  <title>不可变队列的实现 | Ylgrgyq Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。
 不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更">
 <meta property="og:type" content="article">
-<meta property="og:title" content="persistent-queue">
+<meta property="og:title" content="不可变队列的实现">
 <meta property="og:url" content="http://yoursite.com/2017/03/27/persistent-queue/index.html">
 <meta property="og:site_name" content="Ylgrgyq Blog">
 <meta property="og:description" content="命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。
 不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更">
 <meta property="og:image" content="http://yoursite.com/quiver-image-url/B26C672A0FACFFD43C11627EC5A71001.png">
 <meta property="og:image" content="http://yoursite.com/quiver-image-url/A7129F3AF0A83B42D62FBD3F08D54B09.png">
-<meta property="og:updated_time" content="2017-03-27T05:53:33.000Z">
+<meta property="og:updated_time" content="2017-03-28T05:47:05.000Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="persistent-queue">
+<meta name="twitter:title" content="不可变队列的实现">
 <meta name="twitter:description" content="命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。
 不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更">
 <meta name="twitter:image" content="http://yoursite.com/quiver-image-url/B26C672A0FACFFD43C11627EC5A71001.png">
@@ -58,9 +58,9 @@
       </nav>
       <nav id="sub-nav">
         
-          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="Flux RSS"></a>
         
-        <a id="nav-search-btn" class="nav-icon" title="Zoeken"></a>
+        <a id="nav-search-btn" class="nav-icon" title="Rechercher"></a>
       </nav>
       <div id="search-form-wrap">
         <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
@@ -83,7 +83,7 @@
         
   
     <h1 class="article-title" itemprop="name">
-      persistent-queue
+      不可变队列的实现
     </h1>
   
 
@@ -125,7 +125,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2017/03/27/persistent-queue/" data-id="cj0rpatdj0000plwxkjr902pb" class="article-share-link">Delen</a>
+      <a data-url="http://yoursite.com/2017/03/27/persistent-queue/" data-id="cj0t5lfej0001hqwxuu9f65cy" class="article-share-link">Partager</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Clojure/">Clojure</a></li></ul>
@@ -137,9 +137,9 @@
 <nav id="article-nav">
   
   
-    <a href="/2017/03/21/2016-07-17-found-a-bug-in-netty/" id="article-nav-older" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Ouder</strong>
-      <div class="article-nav-title"></div>
+    <a href="/2016/07/17/found-a-bug-in-netty/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Ancien</strong>
+      <div class="article-nav-title">追踪 Netty 异常占用堆外内存的经验分享</div>
     </a>
   
 </nav>
@@ -156,9 +156,9 @@
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Labels</h3>
+    <h3 class="widget-title">Mot-clés</h3>
     <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li></ul>
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
     </div>
   </div>
 
@@ -166,18 +166,18 @@
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Tag Cloud</h3>
+    <h3 class="widget-title">Nuage de mot-clés</h3>
     <div class="widget tagcloud">
-      <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a>
+      <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a>
     </div>
   </div>
 
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Archieven</h3>
+    <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li></ul>
     </div>
   </div>
 
@@ -185,24 +185,20 @@
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Recente berichten</h3>
+    <h3 class="widget-title">Articles récents</h3>
     <div class="widget">
       <ul>
         
           <li>
-            <a href="/2017/03/27/persistent-queue/">persistent-queue</a>
+            <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
           </li>
         
           <li>
-            <a href="/2017/03/21/2016-07-17-found-a-bug-in-netty/">(no title)</a>
+            <a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
           </li>
         
           <li>
-            <a href="/2017/03/21/2016-07-03-garbage-first-collector-understanding/">(no title)</a>
-          </li>
-        
-          <li>
-            <a href="/2017/03/21/hello-world/">Hello World</a>
+            <a href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a>
           </li>
         
       </ul>
@@ -218,7 +214,7 @@
   <div class="outer">
     <div id="footer-info" class="inner">
       &copy; 2017 ylgrgyq<br>
-      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+      Propulsé by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>
 </footer>
