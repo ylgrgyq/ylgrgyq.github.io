@@ -1,89 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  
-  <title>Ylgrgyq Blog</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Ylgrgyq Blog">
-<meta property="og:url" content="http://yoursite.com/index.html">
-<meta property="og:site_name" content="Ylgrgyq Blog">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Ylgrgyq Blog">
-  
-    <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
-  
-  
-    <link rel="icon" href="/favicon.png">
-  
-  
-    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
-  
-  <link rel="stylesheet" href="/css/style.css">
-  
 
-</head>
 
-<body>
-  <div id="container">
-    <div id="wrap">
-      <header id="header">
-  <div id="banner"></div>
-  <div id="header-outer" class="outer">
-    <div id="header-title" class="inner">
-      <h1 id="logo-wrap">
-        <a href="/" id="logo">Ylgrgyq Blog</a>
-      </h1>
-      
-    </div>
-    <div id="header-inner" class="inner">
-      <nav id="main-nav">
-        <a id="main-nav-toggle" class="nav-icon"></a>
-        
-          <a class="main-nav-link" href="/">Home</a>
-        
-          <a class="main-nav-link" href="/archives">Archives</a>
-        
-      </nav>
-      <nav id="sub-nav">
-        
-          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="Flux RSS"></a>
-        
-        <a id="nav-search-btn" class="nav-icon" title="Rechercher"></a>
-      </nav>
-      <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
-      </div>
-    </div>
-  </div>
-</header>
-      <div class="outer">
-        <section id="main">
-  
-    <article id="post-persistent-queue" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2017/03/27/persistent-queue/" class="article-date">
-  <time datetime="2017-03-27T05:30:52.000Z" itemprop="datePublished">2017-03-27</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
-    </h1>
-  
 
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。</p>
+
+	<article>
+	
+		<h1><a href="/2017/03/27/persistent-queue/">不可变队列的实现</a></h1>
+	
+	<div class="article__infos">
+		<span class="article__date">2017-03-27</span><br />
+		
+		
+			<span class="article__tags">
+			  	<a class="article__tag-link" href="/tags/Clojure/">Clojure</a>
+			</span>
+		
+	</div>
+
+	
+
+	
+		<p>命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。</p>
 <p>不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更新。在这种情况下该怎么实现 Queue 呢？</p>
 <h1 id="两个-Stack-来实现-Queue"><a href="#两个-Stack-来实现-Queue" class="headerlink" title="两个 Stack 来实现 Queue"></a>两个 Stack 来实现 Queue</h1><p>以前遇到过这么一个面试题：怎么用两个 stack 去实现一个 queue？当时在做这个题的时候并没有想太多，只是把它当做一个思考题来做，但这个问题实际是对怎么在函数式语言下实现不可变队列有帮助的。</p>
 <p>不可变队列实现的难点就是因为没有 Head、Tail 引用，用单个链表或数组在不考虑扩容的情况下，都是只能在队列的一端以 O(1) 的时间增加一个元素，但要从队列另一端取元素需要遍历整个队列导致时间复杂度变为 O(n)。这个时间复杂度并不符合我们的期待。而使用两个用链表实现的 Stack 去实现队列就能做到出入队平均时间复杂度都为 O(1)。注意是平均时间复杂度。</p>
@@ -114,44 +50,33 @@
 <p>不需要反转，也不需要连接 Front (因为每次 Rear 变成 Front 时 Front 都是空的)，所以 PersistentQueue 不会出现“颠簸”，出队和入队基本都是 O(1) 的时间。</p>
 <p>如此神奇的 PersistentVector 的实现可以看下<a href="http://hypirion.com/musings/understanding-persistent-vector-pt-1" target="_blank" rel="external">这篇文章</a>。</p>
 
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://yoursite.com/2017/03/27/persistent-queue/" data-id="cj0t5lfej0001hqwxuu9f65cy" class="article-share-link">Partager</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Clojure/">Clojure</a></li></ul>
+	
 
-    </footer>
-  </div>
-  
+	
+
 </article>
 
 
-  
-    <article id="post-found-a-bug-in-netty" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/07/17/found-a-bug-in-netty/" class="article-date">
-  <time datetime="2016-07-17T00:21:30.000Z" itemprop="datePublished">2016-07-17</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
-    </h1>
-  
 
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 <a href="http://netty.io" target="_blank" rel="external">Netty</a> 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。</p>
+
+	<article>
+	
+		<h1><a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a></h1>
+	
+	<div class="article__infos">
+		<span class="article__date">2016-07-17</span><br />
+		
+		
+			<span class="article__tags">
+			  	<a class="article__tag-link" href="/tags/Java/">Java</a> <a class="article__tag-link" href="/tags/Netty/">Netty</a>
+			</span>
+		
+	</div>
+
+	
+
+	
+		<p>本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 <a href="http://netty.io" target="_blank" rel="external">Netty</a> 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。</p>
 <p>从现象上分析，我们能确定一定是服务内部有地方出现了内存泄露。在这个出问题的服务上有大量的网络 IO 操作，为了优化性能，我们使用了 PooledByteBufAllocator 来分配 PooledDirectByteBuf。因为是堆外内存泄露，所以第一种可能就是我们在某个地方分配了内存但忘记了释放。我们仔细检查了与业务相关的 ChannelHandler 但并未发现问题，于是又将 Netty 的 io.netty.leakDetectionLevel 设置到 Advanced 级别，放在 Beta 环境上进行测试。在服务连续运行了几天并即将因内存不足再次重启之前，我们从日志中也没有发现任何由 Netty 打出来的内存泄露的报警信息。随后我们又将 io.netty.leakDetectionLevel 设置到 Paranoid 来重新测试，但依然没有发现有关 Netty 内存泄露的相关日志。</p>
 <p>在排查过程中，我们也发现虽然引起服务重启的原因是堆外内存不足，但实际堆内内存也有小幅度攀升。起初我们以为这是正常现象，因为有使用 PooledByteBufAllocator，这种 Allocator 为了减少堆外内存的重复分配，会在服务内部建立一个堆外内存池，每次分配内存优先从内存池分配，只有内存池没有足够内存时候，才会去堆外分配新内存。内存池上的内存虽然在堆外，但维护内存池的数据结构却是在堆上。随着堆外内存分配的增多，内部维护内存池的数据结构也会相应增大，堆内内存也会有所升高。为了验证这个猜想，我们将 io.netty.allocator.type 设置为 unpooled 再去测试，几天后发现堆内内存依旧会小幅度攀升，从而判定内存泄露并不是由内存池而导致。</p>
 <h2 id="顺藤摸瓜"><a href="#顺藤摸瓜" class="headerlink" title="顺藤摸瓜"></a>顺藤摸瓜</h2><p>不是内存池出现泄露，而且堆内堆外一起泄露，能同时占用堆内堆外内存的对象一般不多，不过一时也想不出到底有哪些，于是随手 dump 了一份堆内存快照开始分析，果不其然从中还真看出了些端倪。一般通过 dump 排查内存泄露都使用 <a href="http://www.eclipse.org/mat/" target="_blank" rel="external">Eclipse Memory Analyzer Tool</a>（简称 MAT）去检查 dominator tree，从中找出哪个类的对象不正常地占用了大量内存。但这次的 dominator tree 看不出有什么问题。因为出现泄露的对象在堆上占用的总内存并不是很多，它在 dominator tree 上根本排不到前列，很难被关注到，但是在 Histogram（如下图）中就有它的身影了。</p>
@@ -189,44 +114,33 @@
 <p>猜想 Netty 这里使用 finalize 而不是明确提供一个 close 函数，主要是为了使用方便，毕竟 OpenSslContext 在大多数场景下在一个服务中只存在一两个对象，需要将其销毁的情况也许也不是很多。以上猜想<a href="https://github.com/netty/netty/issues/4958" target="_blank" rel="external">在这个 issue </a>中也得到了一定程度的印证，<a href="https://github.com/netty/netty/pull/5547" target="_blank" rel="external">并且 Netty 已经在修改这个问题</a>，让 OpenSslContext 实现 ReferenceCount 接口，在 finalize 之外又提供了 release 函数专门用于清理 Native 资源。</p>
 <p>所以分享这些经验来让大家引以为戒，finalize 要尽量少用，看着以为使用 finalize 很合理的地方还是有可能出现问题。</p>
 
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://yoursite.com/2016/07/17/found-a-bug-in-netty/" data-id="cj0t5lfef0000hqwxdrnyl2tj" class="article-share-link">Partager</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
+	
 
-    </footer>
-  </div>
-  
+	
+
 </article>
 
 
-  
-    <article id="post-garbage-first-collector-understanding" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/07/03/garbage-first-collector-understanding/" class="article-date">
-  <time datetime="2016-07-03T07:39:30.000Z" itemprop="datePublished">2016-07-03</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a>
-    </h1>
-  
 
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="总览"><a href="#总览" class="headerlink" title="总览"></a>总览</h1><p>缩写约定：</p>
+
+	<article>
+	
+		<h1><a href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a></h1>
+	
+	<div class="article__infos">
+		<span class="article__date">2016-07-03</span><br />
+		
+		
+			<span class="article__tags">
+			  	<a class="article__tag-link" href="/tags/JVM/">JVM</a> <a class="article__tag-link" href="/tags/Java/">Java</a>
+			</span>
+		
+	</div>
+
+	
+
+	
+		<h1 id="总览"><a href="#总览" class="headerlink" title="总览"></a>总览</h1><p>缩写约定：</p>
 <p>YGC: Young Generation GC</p>
 <p>OGC: 针对 Old Generation 的 GC，对 G1 来说指 Mixed GC</p>
 <p>FGC: 针对整个 Heap 的 Full GC</p>
@@ -456,112 +370,16 @@
 <p>[4] Taiichi Yuasa. Real-Time Garbage Collection on General Purpose Machines. Journal of Systems and Software, Volume 11, Issue 3, March 1990, pp. 181-98. Elsevier Science, Inc., New York.</p>
 <p>[5] Tony Printezis and David Detlefs. A Generational Mostyly-Concurrent Garbage Collector. Proceedings of the 2nd Internaltional Symposium on Memory Management. ACM, New York, 2000, pp. 143-54. ISBN 1-58113-263-8</p>
 
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://yoursite.com/2016/07/03/garbage-first-collector-understanding/" data-id="cj0t5lfep0003hqwxuelschiq" class="article-share-link">Partager</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JVM/">JVM</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+	
 
-    </footer>
-  </div>
-  
+	
+
 </article>
 
 
-  
-
-</section>
-        
-          <aside id="sidebar">
-  
-    
-
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Mot-clés</h3>
-    <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
-    </div>
-  </div>
 
 
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Nuage de mot-clés</h3>
-    <div class="widget tagcloud">
-      <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a>
-    </div>
-  </div>
-
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Archives</h3>
-    <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li></ul>
-    </div>
-  </div>
 
 
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Articles récents</h3>
-    <div class="widget">
-      <ul>
-        
-          <li>
-            <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
-          </li>
-        
-          <li>
-            <a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
-          </li>
-        
-          <li>
-            <a href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a>
-          </li>
-        
-      </ul>
-    </div>
-  </div>
+	<span class="different-posts">📕 end of posts 📕</span>
 
-  
-</aside>
-        
-      </div>
-      <footer id="footer">
-  
-  <div class="outer">
-    <div id="footer-info" class="inner">
-      &copy; 2017 ylgrgyq<br>
-      Propulsé by <a href="http://hexo.io/" target="_blank">Hexo</a>
-    </div>
-  </div>
-</footer>
-    </div>
-    <nav id="mobile-nav">
-  
-    <a href="/" class="mobile-nav-link">Home</a>
-  
-    <a href="/archives" class="mobile-nav-link">Archives</a>
-  
-</nav>
-    
-
-<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
-
-
-  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
-  <script src="/fancybox/jquery.fancybox.pack.js"></script>
-
-
-<script src="/js/script.js"></script>
-
-  </div>
-</body>
-</html>

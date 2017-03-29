@@ -1,236 +1,385 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  
-  <title>Archives | Ylgrgyq Blog</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Ylgrgyq Blog">
-<meta property="og:url" content="http://yoursite.com/archives/index.html">
-<meta property="og:site_name" content="Ylgrgyq Blog">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Ylgrgyq Blog">
-  
-    <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
-  
-  
-    <link rel="icon" href="/favicon.png">
-  
-  
-    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
-  
-  <link rel="stylesheet" href="/css/style.css">
-  
 
-</head>
 
-<body>
-  <div id="container">
-    <div id="wrap">
-      <header id="header">
-  <div id="banner"></div>
-  <div id="header-outer" class="outer">
-    <div id="header-title" class="inner">
-      <h1 id="logo-wrap">
-        <a href="/" id="logo">Ylgrgyq Blog</a>
-      </h1>
-      
-    </div>
-    <div id="header-inner" class="inner">
-      <nav id="main-nav">
-        <a id="main-nav-toggle" class="nav-icon"></a>
-        
-          <a class="main-nav-link" href="/">Home</a>
-        
-          <a class="main-nav-link" href="/archives">Archives</a>
-        
-      </nav>
-      <nav id="sub-nav">
-        
-          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="Flux RSS"></a>
-        
-        <a id="nav-search-btn" class="nav-icon" title="Rechercher"></a>
-      </nav>
-      <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
-      </div>
-    </div>
-  </div>
-</header>
-      <div class="outer">
-        <section id="main">
-  
-  
-    
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2017" class="archive-year">2017</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2017/03/27/persistent-queue/" class="archive-article-date">
-  <time datetime="2017-03-27T05:30:52.000Z" itemprop="datePublished">Mar 27</time>
-</a>
-      
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
-    </h1>
-  
 
-    </header>
-  </div>
+
+	<article>
+	
+		<h1><a href="/2017/03/27/persistent-queue/">不可变队列的实现</a></h1>
+	
+	<div class="article__infos">
+		<span class="article__date">2017-03-27</span><br />
+		
+		
+			<span class="article__tags">
+			  	<a class="article__tag-link" href="/tags/Clojure/">Clojure</a>
+			</span>
+		
+	</div>
+
+	
+
+	
+		<p>命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。</p>
+<p>不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更新。在这种情况下该怎么实现 Queue 呢？</p>
+<h1 id="两个-Stack-来实现-Queue"><a href="#两个-Stack-来实现-Queue" class="headerlink" title="两个 Stack 来实现 Queue"></a>两个 Stack 来实现 Queue</h1><p>以前遇到过这么一个面试题：怎么用两个 stack 去实现一个 queue？当时在做这个题的时候并没有想太多，只是把它当做一个思考题来做，但这个问题实际是对怎么在函数式语言下实现不可变队列有帮助的。</p>
+<p>不可变队列实现的难点就是因为没有 Head、Tail 引用，用单个链表或数组在不考虑扩容的情况下，都是只能在队列的一端以 O(1) 的时间增加一个元素，但要从队列另一端取元素需要遍历整个队列导致时间复杂度变为 O(n)。这个时间复杂度并不符合我们的期待。而使用两个用链表实现的 Stack 去实现队列就能做到出入队平均时间复杂度都为 O(1)。注意是平均时间复杂度。</p>
+<p><img src="quiver-image-url/B26C672A0FACFFD43C11627EC5A71001.png" alt="屏幕快照 2017-03-26 下午4.41.09.png"></p>
+<p>如上图所示，用两个链表分别称为 Front 和 Rear。每次入队时，都将新元素添加到 Rear 链表中，这样时间为 O(1)。每次出队时，都从 Front 队列中取元素出队。如果 Front 非空，那么出队的时间复杂度为 O(1)，如果 Front 为空，则将 Rear 链表反转一下作为新的 Front 队列。之后再将新 Front 队列的队首元素出队，这个过程的时间复杂度为 O(n)。假设 Front 为空时 Rear 链表元素数量为 m，那么将 Rear 反转的时间是 O(m) 但之后 m 个元素出队时时间都是 O(1)，于是能将反转 Rear 队列的时间平摊给之后 m 次出队时间，所以平均下来出队操作的时间还是 O(1)。</p>
+<p>这个过程用 Clojure 实现如下：<br><figure class="highlight clojure"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div></pre></td><td class="code"><pre><div class="line">(<span class="name"><span class="builtin-name">defrecord</span></span> Queue [front rear cnt])</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> make-queue</div><div class="line">  ([] (<span class="name">Queue.</span> '() '() <span class="number">0</span>))</div><div class="line">  ([front rear cnt]</div><div class="line">    (<span class="name">Queue.</span> front rear cnt)))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn-</span></span> maintain [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">if</span></span> (<span class="name"><span class="builtin-name">and</span></span> (<span class="name"><span class="builtin-name">empty?</span></span> (<span class="name">.-front</span> queue)) (<span class="name">not-empty</span> (<span class="name">.-rear</span> queue)))</div><div class="line">    (<span class="name">make-queue</span> (<span class="name"><span class="builtin-name">reverse</span></span> (<span class="name">.-rear</span> queue)) '() (<span class="name">.-cnt</span> queue))</div><div class="line">    queue))</div><div class="line"></div><div class="line"><span class="comment">;; maintain after every enqueue to insure front list </span></div><div class="line"><span class="comment">;; must have at least one element when queue is not empty</span></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> enqueue [queue x]</div><div class="line">  (<span class="name">maintain</span> (<span class="name">make-queue</span> (<span class="name">.-front</span> queue) (<span class="name"><span class="builtin-name">conj</span></span> (<span class="name">.-rear</span> queue) x) (<span class="name"><span class="builtin-name">inc</span></span> (<span class="name">.-cnt</span> queue)))))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> empty-queue? [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">zero?</span></span> (<span class="name">.-cnt</span> queue)))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> peek [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">when-not</span></span> (<span class="name">empty-queue?</span> queue)</div><div class="line">    (<span class="name"><span class="builtin-name">first</span></span> (<span class="name">.-front</span> queue))))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> dequeue [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">if-not</span></span> (<span class="name">empty-queue?</span> queue)</div><div class="line">    (<span class="name">maintain</span> (<span class="name">make-queue</span> (<span class="name"><span class="builtin-name">rest</span></span> (<span class="name">.-front</span> queue)) (<span class="name">.-rear</span> queue) (<span class="name"><span class="builtin-name">dec</span></span> (<span class="name">.-cnt</span> queue))))</div><div class="line">    queue))</div><div class="line"></div></pre></td></tr></table></figure></p>
+<p>maintain 函数的作用主要是为了让队列非空时，Front 链表至少有一个元素存在。不然队列的 peek 操作在 Front 为空时需要遍历 Rear 链表才能找到下一个出队元素，并且由于 peek 的返回值只有下一个出队的元素，我们不能将新的队列结构返回(即反转 Rear 链表并将其作为 Front)，于是在连续执行 peek 操作时，每次 peek 都要遍历整个 Rear 表。这个是不合理的，所以我们需要保证队列非空时，Front 链表至少有一个元素存在，以供 peek 使用。</p>
+<h1 id="Lazy-来实现真正-O-1-的队列"><a href="#Lazy-来实现真正-O-1-的队列" class="headerlink" title="Lazy 来实现真正 O(1) 的队列"></a>Lazy 来实现真正 O(1) 的队列</h1><p>上面实现的缺陷是显而易见的，虽然平均时间是 O(1) 但毕竟会存在某次出队的耗时为 O(n)，导致使用时每次出队操作时间有颠簸。而如果我们能借助函数式编程语言普遍支持的 Lazy 特性去实现队列，就能避免这种颠簸。</p>
+<p>还是延续上面双链表的实现，最耗时的操作是反转 Rear 链表，每次执行这个操作的时间点是在 Front 队列为空的时候。如果我们不想只在这一个时间点进行 Rear 反转，想将反转过程平摊到每次出入队操作中，那么我们就需要在 Front 还未变为空的时候就执行 Rear 反转，并且每次都执行一小步，比如反转一个元素，从而保证每一个出入队操作的时间都是 O(1)。</p>
+<p>但是 Front 链表非空时我们就反转 Rear 的话，反转完 Rear 时如果队列没有元素出队，那么 Front 链表是没有变动过的，那不可能像之前一样将反转后的 Rear 链表直接作为 Front 来使用，而是还需要将 Front 和反转后的 Rear 连接起来。Front 是链表，头部是队首，如下图所示，如果直接拼接的话还是要遍历 Front 链表找到 Front 链表的尾巴，再将尾巴指向反转后的 Rear 链表。</p>
+<p><img src="quiver-image-url/A7129F3AF0A83B42D62FBD3F08D54B09.png" alt="屏幕快照 2017-03-26 下午6.00.31.png"></p>
+<p>如果 Rear 长度是 n，Front 长度是 m，那么反转 Rear 的操作要 n 步，连接 Front 的操作要 m 步。以连续入队操作来看，也就是说如果每次入队都执行一个 Rear 反转或者连接 Front 工作的话，连接完毕后 Rear 又会有 m + n 个元素了，我们为了每次入队都只执行一次额外操作，所以每一个入队操作都不能浪费，也就是说连接完毕之后再入队一个元素时我们又要开始下一轮反转 Rear 和连接 Front 的工作，此时 Front 长度为 m + n，Rear 长度为 m + n + 1，从而得到 Rear 反转和连接 Front 的工作每次是 Rear 比 Front 多一个元素的时候开始。</p>
+<p>我们将反转 Rear 和连接 Front 两个工作称为 rotate，并且约定 rotate 执行时间为 Rear 比 Front 多一个元素时。我们得到 rotate 函数如下，注意 acc 表示的是反转 Rear 的结果，即 rotate 的反转 Rear 和连接 Front 操作最终都是构建在 acc 这个 List 上。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line">// rotate 执行时必须保证 rear 比 front 多一个元素</div><div class="line">(defn rotate [front rear acc]</div><div class="line">  (lazy-seq</div><div class="line">    (if (empty? front)</div><div class="line">      // 如果 front 为空，那么 rear 只有一个元素，所以直接放入 acc</div><div class="line">      (cons (first rear) acc)</div><div class="line">      // 当 front 非空，下面解释</div><div class="line">      (cons (first front)</div><div class="line">            (rotate (rest front) (rest rear) (cons (first rear) acc))))))</div></pre></td></tr></table></figure>
+<p>front 非空的情形直接这么看比较难理解，不过通过下面公式就好理解了：<br>rotate(X, Y, A) = X ++ reverse(Y) ++ A<br>                = x1 ++ (X’ ++ reverse(Y) ++ A)<br>                = x1 ++ X’ ++ reverse(Y’) ++ y1 ++ A<br>                = x1 ++ rotate(X’, Y’, y1 ++ A)</p>
+<p>其中 x1 是 X 中的第一个元素，y1 是 Y 中的第一个元素。A 是用来存放 Rear 反转结果的。</p>
+<p>rotate 的结果实际就是 Front，我们希望出队入队都能执行 Rear 反转或连接 Front，所以我们每次入队出队都要求 rotate 结果下一个值。所以单独拿一个叫做 rots 的 var 来存放 rotate 的结果，rots 和 front 共同指向 rotate 的结果，只是 rots 是用来每次出队入队时候求值的，front 仅仅在出队时使用，相当于 front 保存着队首元素，rots 只是为了求出整个队列，所以不需要保存队首元素。</p>
+<p>使用 Clojure 实现如下：</p>
+<figure class="highlight clojure"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div></pre></td><td class="code"><pre><div class="line">(<span class="name"><span class="builtin-name">defrecord</span></span> LazyQueue [front rear rots cnt])</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> make-queue</div><div class="line">  ([] (<span class="name">LazyQueue.</span> '() '() '() <span class="number">0</span>))</div><div class="line">  ([front rear rots cnt] (<span class="name">LazyQueue.</span> front rear rots cnt)))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> rotate [front rear acc]</div><div class="line">  (<span class="name"><span class="builtin-name">lazy-seq</span></span> (<span class="name"><span class="builtin-name">if</span></span> (<span class="name"><span class="builtin-name">empty?</span></span> front)</div><div class="line">              (<span class="name"><span class="builtin-name">cons</span></span> (<span class="name"><span class="builtin-name">first</span></span> rear) acc)</div><div class="line">              (<span class="name"><span class="builtin-name">cons</span></span> (<span class="name"><span class="builtin-name">first</span></span> front)</div><div class="line">                    (<span class="name">rotate</span> (<span class="name"><span class="builtin-name">rest</span></span> front) (<span class="name"><span class="builtin-name">rest</span></span> rear) (<span class="name"><span class="builtin-name">cons</span></span> (<span class="name"><span class="builtin-name">first</span></span> rear) acc))))))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> maintain [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">if</span></span> (<span class="name"><span class="builtin-name">empty?</span></span> (<span class="name">.-rots</span> queue))</div><div class="line">    (<span class="name"><span class="builtin-name">let</span></span> [rots (<span class="name">rotate</span> (<span class="name">.-front</span> queue) (<span class="name">.-rear</span> queue) '())]</div><div class="line">      (<span class="name">make-queue</span> rots '() rots (<span class="name">.-cnt</span> queue)))</div><div class="line">    (<span class="name">make-queue</span> (<span class="name">.-front</span> queue) (<span class="name">.-rear</span> queue) (<span class="name"><span class="builtin-name">rest</span></span> (<span class="name">.-rots</span> queue)) (<span class="name">.-cnt</span> queue))))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> enqueue [queue x]</div><div class="line">  (<span class="name">maintain</span> (<span class="name">make-queue</span> (<span class="name">.-front</span> queue) (<span class="name"><span class="builtin-name">conj</span></span> (<span class="name">.-rear</span> queue) x) (<span class="name">.-rots</span> queue) (<span class="name"><span class="builtin-name">inc</span></span> (<span class="name">.-cnt</span> queue)))))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> empty-queue? [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">zero?</span></span> (<span class="name">.-cnt</span> queue)))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> peek-queue [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">when-not</span></span> (<span class="name">empty-queue?</span> queue)</div><div class="line">    (<span class="name"><span class="builtin-name">first</span></span> (<span class="name">.-front</span> queue))))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> dequeue [queue]</div><div class="line">  (<span class="name">maintain</span> (<span class="name">make-queue</span> (<span class="name"><span class="builtin-name">rest</span></span> (<span class="name">.-front</span> queue)) (<span class="name">.-rear</span> queue) (<span class="name">.-rots</span> queue) (<span class="name"><span class="builtin-name">dec</span></span> (<span class="name">.-cnt</span> queue)))))</div></pre></td></tr></table></figure>
+<p>那么 Clojure 中的 Queue 是怎么实现的呢？</p>
+<h1 id="Clojure-中的-queue"><a href="#Clojure-中的-queue" class="headerlink" title="Clojure 中的 queue"></a>Clojure 中的 queue</h1><p>Clojure 中的 queue 一般是指 clojure.lang 中的 PersistentQueue，它使用起来可能会让人觉得有点怪，比如像这样：<br><figure class="highlight clojure"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line">(<span class="name"><span class="builtin-name">let</span></span> [queue (<span class="name"><span class="builtin-name">-&gt;</span></span> (<span class="name">PersistentQueue/EMPTY</span>)</div><div class="line">                (<span class="name"><span class="builtin-name">conj</span></span> <span class="number">1</span>)</div><div class="line">                (<span class="name"><span class="builtin-name">conj</span></span> <span class="number">2</span>)</div><div class="line">                (<span class="name"><span class="builtin-name">conj</span></span> <span class="number">3</span>))]</div><div class="line">  (<span class="name"><span class="builtin-name">loop</span></span> [q queue]</div><div class="line">    (<span class="name"><span class="builtin-name">when-let</span></span> [x (<span class="name"><span class="builtin-name">peek</span></span> q)]</div><div class="line">      (<span class="name">println</span> x)</div><div class="line">      (<span class="name"><span class="builtin-name">recur</span></span> (<span class="name"><span class="builtin-name">pop</span></span> q)))))</div></pre></td></tr></table></figure><br>它出队用的 peek 和 pop，让人感觉像个 stack 一样。用 first 和 rest 在一些场合下也行，first 使用起来跟 peek 效果相同，但 rest 会将队列转换为 list，从而失去 queue 的语义，转换成 list 之后再使用 conj 会将新元素加入到 list 首部。</p>
+<p>PersistentQueue 实现方式跟前面说的两个 Stack 实现 Queue 有点类似，但里面 Front 是 List，Rear 是 PersistentVector。入队函数实现如下：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">public PersistentQueue cons(Object o)&#123;</div><div class="line">    if(f == null)     //empty</div><div class="line">        return new PersistentQueue(meta(), cnt + 1, RT.list(o), null);</div><div class="line">    else</div><div class="line">        return new PersistentQueue(meta(), cnt + 1, f, (r != null ? r : PersistentVector.EMPTY).cons(o));</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>看到入队的时候也是直接放入 Rear，并且也是只要 Queue 不空则至少有一个元素再 Front 中。</p>
+<p>出队函数如下：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">public PersistentQueue pop()&#123;</div><div class="line">    if(f == null)  //hmmm... pop of empty queue -&gt; empty queue?</div><div class="line">        return this;</div><div class="line">    ISeq f1 = f.next();</div><div class="line">    PersistentVector r1 = r;</div><div class="line">    if(f1 == null)</div><div class="line">        &#123;</div><div class="line">        f1 = RT.seq(r);</div><div class="line">        r1 = null;</div><div class="line">        &#125;</div><div class="line">    return new PersistentQueue(meta(), cnt - 1, f1, r1);</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>出队时从 Front 出队，如果出队完 Front 为空，则需要将 Rear 导入 Front。由于 Rear 是由 PersistentVector 实现的，每次添加元素是以接近 O(1) 的时间添加在 vector 末尾，所以其元素顺序和 Front 顺序相同，可以直接将 Rear 通过 seq 操作转化为 List 后作为 Front 即可，无需进行反转操作。因为 PersistentVector 能够以 O(1) 的时间访问任意一个元素，所以它只需要实现 ISeq 接口就能变成一个 List，不需要任何拷贝操作。</p>
+<p>不需要反转，也不需要连接 Front (因为每次 Rear 变成 Front 时 Front 都是空的)，所以 PersistentQueue 不会出现“颠簸”，出队和入队基本都是 O(1) 的时间。</p>
+<p>如此神奇的 PersistentVector 的实现可以看下<a href="http://hypirion.com/musings/understanding-persistent-vector-pt-1" target="_blank" rel="external">这篇文章</a>。</p>
+
+	
+
+	
+
 </article>
-  
-    
-    
-      
-        </div></section>
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2016" class="archive-year">2016</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2016/07/17/found-a-bug-in-netty/" class="archive-article-date">
-  <time datetime="2016-07-17T00:21:30.000Z" itemprop="datePublished">Jul 17</time>
-</a>
-      
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
-    </h1>
-  
 
-    </header>
-  </div>
+
+
+
+	<article>
+	
+		<h1><a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a></h1>
+	
+	<div class="article__infos">
+		<span class="article__date">2016-07-17</span><br />
+		
+		
+			<span class="article__tags">
+			  	<a class="article__tag-link" href="/tags/Java/">Java</a> <a class="article__tag-link" href="/tags/Netty/">Netty</a>
+			</span>
+		
+	</div>
+
+	
+
+	
+		<p>本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 <a href="http://netty.io" target="_blank" rel="external">Netty</a> 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。</p>
+<p>从现象上分析，我们能确定一定是服务内部有地方出现了内存泄露。在这个出问题的服务上有大量的网络 IO 操作，为了优化性能，我们使用了 PooledByteBufAllocator 来分配 PooledDirectByteBuf。因为是堆外内存泄露，所以第一种可能就是我们在某个地方分配了内存但忘记了释放。我们仔细检查了与业务相关的 ChannelHandler 但并未发现问题，于是又将 Netty 的 io.netty.leakDetectionLevel 设置到 Advanced 级别，放在 Beta 环境上进行测试。在服务连续运行了几天并即将因内存不足再次重启之前，我们从日志中也没有发现任何由 Netty 打出来的内存泄露的报警信息。随后我们又将 io.netty.leakDetectionLevel 设置到 Paranoid 来重新测试，但依然没有发现有关 Netty 内存泄露的相关日志。</p>
+<p>在排查过程中，我们也发现虽然引起服务重启的原因是堆外内存不足，但实际堆内内存也有小幅度攀升。起初我们以为这是正常现象，因为有使用 PooledByteBufAllocator，这种 Allocator 为了减少堆外内存的重复分配，会在服务内部建立一个堆外内存池，每次分配内存优先从内存池分配，只有内存池没有足够内存时候，才会去堆外分配新内存。内存池上的内存虽然在堆外，但维护内存池的数据结构却是在堆上。随着堆外内存分配的增多，内部维护内存池的数据结构也会相应增大，堆内内存也会有所升高。为了验证这个猜想，我们将 io.netty.allocator.type 设置为 unpooled 再去测试，几天后发现堆内内存依旧会小幅度攀升，从而判定内存泄露并不是由内存池而导致。</p>
+<h2 id="顺藤摸瓜"><a href="#顺藤摸瓜" class="headerlink" title="顺藤摸瓜"></a>顺藤摸瓜</h2><p>不是内存池出现泄露，而且堆内堆外一起泄露，能同时占用堆内堆外内存的对象一般不多，不过一时也想不出到底有哪些，于是随手 dump 了一份堆内存快照开始分析，果不其然从中还真看出了些端倪。一般通过 dump 排查内存泄露都使用 <a href="http://www.eclipse.org/mat/" target="_blank" rel="external">Eclipse Memory Analyzer Tool</a>（简称 MAT）去检查 dominator tree，从中找出哪个类的对象不正常地占用了大量内存。但这次的 dominator tree 看不出有什么问题。因为出现泄露的对象在堆上占用的总内存并不是很多，它在 dominator tree 上根本排不到前列，很难被关注到，但是在 Histogram（如下图）中就有它的身影了。</p>
+<p><img src="https://cloud.githubusercontent.com/assets/1115061/16897985/53d4ae34-4bf8-11e6-8170-acc9eee1a42c.png" alt="2016-07-17 7 40 25"></p>
+<p>出现泄露的就是上图画红框圈起来的 OpenSslClientContext。</p>
+<p>从 OpenSslClientContext 的使用也能看出来，这个出问题的服务是作为 client 一端，使用 OpenSsl 去连接另一个服务。一般正常使用的情况下，一个 SSL 证书会只对应一个 OpenSslClientContext。对于大多数场景来说，整个服务可能只会使用一种证书，所以只会有一个 OpenSslClientContext 保留在内存中。但我们这个服务有些特殊，会使用很多不同的证书去建立 SSL 连接，只是服务在内部做了限制，将同一时刻不同证书建立的 SSL 连接数量控制在几十个左右，并且在一个 SSL 证书使用完毕之后，指向该 SSL 证书对应 OpenSslClientContext 的引用会被清理掉。之后按正常逻辑来说 OpenSslClientContext 会被 GC 掉，不会在内存中长久停留。但是上图显示同一时间并存的 OpenSslClientContext 有 27472 个之多，远远超过了原本服务内部在同一时间允许并存的 OpenSslClientContext 的数量限制，这就意味着这个 OpenSslClientContext 发生了泄露。</p>
+<p>从 dump 中我们还发现，维护 OpenSslClientContext 的业务对象没有产生泄露，并被正常 GC。这说明我们的业务代码可以正确清理指向 OpenSslClientContext 对象的引用。那这个 OpenSslClientContext 是怎么被 GC Root 引用到的呢？</p>
+<h2 id="水落石出"><a href="#水落石出" class="headerlink" title="水落石出"></a>水落石出</h2><p>依然是使用 MAT，分析指向泄露的 OpenSslClientContext 对象的引用路径后得到如下图：</p>
+<p><img src="https://cloud.githubusercontent.com/assets/1115061/16897983/472ae7fc-4bf8-11e6-8a69-a311827348b0.png" alt="2016-07-13 7 27 37"></p>
+<p>可以看出 OpenSslClientContext 对象指向了两个引用，一个是 Finalizer 上的引用，一个是 Native Stack 上的引用，这表明我们的业务对象已经正确地释放了对 OpenSslClientContext 的引用。<br>Finalizer 引用的存在是因为 finalize method 被 OpenSslClientContext  所 overide 了（实际是 OpenSslClientContext 的父类 OpenSslContext 来进行 overide），这样 JVM 会为这类对象自动加上 Finalizer 引用，从而在该对象被 GC 的时候调用对象的 finalize method。但这个 Finalizer 引用不会阻碍对象被 GC，所以内存泄露与它没有直接的关系。</p>
+<p>而 Native Stack 就是 GC Root，被其引用的对象是不能被 GC 的，这也就是 OpenSslClientContext 泄露的源头。从这个 Native Stack 指向的对象的类名 OpenSslClientContext$1 能看出，这是一个 OpenSslClientContext 上的匿名类。</p>
+<p>查看这个匿名类的对象的属性：</p>
+<p><img src="https://cloud.githubusercontent.com/assets/1115061/16897981/426fd038-4bf8-11e6-95d7-6b657213c973.png" alt="2016-07-13 9 57 15"></p>
+<p>一方面它包含有指向外部 OpenSslClientContext 的引用 this$0，还包含一个叫做 val$extendedManager 的引用指向了对象 sun.security.ssl.X509TrustManagerImpl。这时候去翻看 Netty 4.1.1-Final 的 OpenSslClientContext 第 240 ~ 268 行代码如下（注意现在的 Netty 4.1 分支已经将这个 bug 修复，所以不能直接看到下面的代码了）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div></pre></td><td class="code"><pre><div class="line">try &#123;</div><div class="line">    if (trustCertCollection != null) &#123;</div><div class="line">        trustManagerFactory = buildTrustManagerFactory(trustCertCollection, trustManagerFactory);</div><div class="line">    &#125; else if (trustManagerFactory == null) &#123;</div><div class="line">        trustManagerFactory = TrustManagerFactory.getInstance(</div><div class="line">                TrustManagerFactory.getDefaultAlgorithm());</div><div class="line">        trustManagerFactory.init((KeyStore) null);</div><div class="line">    &#125;</div><div class="line">    final X509TrustManager manager = chooseTrustManager(trustManagerFactory.getTrustManagers());</div><div class="line"></div><div class="line">    // Use this to prevent an error when running on java &lt; 7</div><div class="line">    if (useExtendedTrustManager(manager)) &#123;</div><div class="line">        final X509ExtendedTrustManager extendedManager = (X509ExtendedTrustManager) manager;</div><div class="line">        SSLContext.setCertVerifyCallback(ctx, new AbstractCertificateVerifier() &#123;</div><div class="line">            @Override</div><div class="line">            void verify(OpenSslEngine engine, X509Certificate[] peerCerts, String auth)</div><div class="line">                    throws Exception &#123;</div><div class="line">                extendedManager.checkServerTrusted(peerCerts, auth, engine);</div><div class="line">            &#125;</div><div class="line">        &#125;);</div><div class="line">    &#125; else &#123;</div><div class="line">        SSLContext.setCertVerifyCallback(ctx, new AbstractCertificateVerifier() &#123;</div><div class="line">            @Override</div><div class="line">            void verify(OpenSslEngine engine, X509Certificate[] peerCerts, String auth)</div><div class="line">                    throws Exception &#123;</div><div class="line">                manager.checkServerTrusted(peerCerts, auth);</div><div class="line">            &#125;</div><div class="line">        &#125;);</div><div class="line">    &#125;</div><div class="line">&#125; catch (Exception e) &#123;</div><div class="line">    throw new SSLException(&quot;unable to setup trustmanager&quot;, e);</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>对比上面 MAT 中看到的 val$extendedManager 引用信息我们会知道，上述代码 14 ~ 20 行设置的这个 callback 就是之前说的出现泄露的匿名类。匿名类有指向外部对象 OpenSslClientContext 的引用，也有个指向外部 extendedManager 的引用。这段逻辑是在 OpenSslClientContext 的构造函数中的，而且 12 ~ 29 行的这个 if 语句无论走哪个分支，都会设置一个匿名的 verifier 到 SSLContext.setCertVerifyCallback，也就是说只要 new 一个 OpenSslClientContext 对象，就一定会设置一个 verifier 到 Native Stack 上。</p>
+<p>找到 SSLContext.setCertVerifyCallback 的代码。在我们使用的 netty-tcnative-1.1.33.Fork17 中，SSLContext.setCertVerifyCallback 函数声明如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line">/**</div><div class="line"> * Allow to hook &#123;@link CertificateVerifier&#125; into the handshake processing.</div><div class="line"> * This will call &#123;@code SSL_CTX_set_cert_verify_callback&#125; and so replace the default verification</div><div class="line"> * callback used by openssl</div><div class="line"> * @param ctx Server or Client context to use.</div><div class="line"> * @param verifier the verifier to call during handshake.</div><div class="line"> */</div><div class="line">public static native void setCertVerifyCallback(long ctx, CertificateVerifier verifier);</div></pre></td></tr></table></figure>
+<p>从注释上能看出来，这个函数是用来让用户自定义证书检查函数，好在 SSL Handshake 过程中来使用去校验证书。</p>
+<p>函数声明上的「native」关键字也表明它是通过调用本地 C 代码实现的。结合之前的分析，能推理出一定是这个 Native 代码将 verifier callback 存入了 Native Stack，并且在 OpenSslClientContext 没有其他引用指向时没能将这个 callback 正确清理，从而让 OpenSslClientContext 对象有了从 GC Root 过来的引用指向，所以不能被 GC 掉，造成了泄露。</p>
+<p>有了指导路线，我们继续追踪问题。在 netty-tcnative-1.1.33.Fork17 的 sslcontext.c 文件下找到 setCertVerifyCallback 函数对应的 Native 代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div></pre></td><td class="code"><pre><div class="line">TCN_IMPLEMENT_CALL(void, SSLContext, setCertVerifyCallback)(TCN_STDARGS, jlong ctx, jobject verifier)</div><div class="line">&#123;</div><div class="line">    tcn_ssl_ctxt_t *c = J2P(ctx, tcn_ssl_ctxt_t *);</div><div class="line"></div><div class="line">    UNREFERENCED(o);</div><div class="line">    TCN_ASSERT(ctx != 0);</div><div class="line"></div><div class="line">    if (verifier == NULL) &#123;</div><div class="line">        SSL_CTX_set_cert_verify_callback(c-&gt;ctx, NULL, NULL);</div><div class="line">    &#125; else &#123;</div><div class="line">        jclass verifier_class = (*e)-&gt;GetObjectClass(e, verifier);</div><div class="line">        jmethodID method = (*e)-&gt;GetMethodID(e, verifier_class, &quot;verify&quot;, &quot;(J[[BLjava/lang/String;)I&quot;);</div><div class="line"></div><div class="line">        if (method == NULL) &#123;</div><div class="line">            return;</div><div class="line">        &#125;    </div><div class="line">        // Delete the reference to the previous specified verifier if needed.</div><div class="line">        if (c-&gt;verifier != NULL) &#123;</div><div class="line">            (*e)-&gt;DeleteLocalRef(e, c-&gt;verifier);</div><div class="line">        &#125;    </div><div class="line">        c-&gt;verifier = (*e)-&gt;NewGlobalRef(e, verifier);</div><div class="line">        c-&gt;verifier_method = method;</div><div class="line"></div><div class="line">        SSL_CTX_set_cert_verify_callback(c-&gt;ctx, SSL_cert_verify, NULL);</div><div class="line">    &#125;    </div><div class="line">&#125;       </div></pre></td></tr></table></figure>
+<p>这里函数的 verifier 参数就对应着 SSLContext.setCertVerifyCallback 上传入的 verifier。这里也不需要完全理解上面代码的含义，主要是看到第 21 行，创建了个引用从 *e 指向了 verifier。这个 *e 是个 JNIEnv struct，NewGlobalRef(e, verifier) 相当于将 verifier 保存在一个全局的变量当中，必须通过对应的 DeleteGlobalRef 才能销毁。</p>
+<p>在搜索 sslcontext.c 的代码后发现在正常的逻辑下，要对 verifier 调用 DeleteGlobalRef 将其清理，必须调用 SSLContext.free 函数才能实现。SSLContext.free 声明如下：</p>
+<figure class="highlight plain"><figcaption><span>java</span></figcaption><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">/**</div><div class="line"> * Free the resources used by the Context</div><div class="line"> * @param ctx Server or Client context to free.</div><div class="line"> * @return APR Status code.</div><div class="line"> */</div><div class="line">public static native int free(long ctx);</div></pre></td></tr></table></figure>
+<p>它还有个对应的 make 函数，合并起来用于负责 OpenSslClientContext 分配和回收一些 Native 的资源。OpenSslClientContext 在构造函数中必须调用一次 SSLContext.make，在对象被销毁时需要调用 SSLContext.free。「在对象被销毁时调用」听上去有点析构函数的意思，但 Java 中没有析构函数的概念，看上去 Netty 也没有好的方法来实现这种类似析构函数的功能，虽然所有讲到 finalize 的地方都在谆谆告诫开发者只是知晓它的存在就好但永远不要去使用，Netty 还是「被逼无奈」地将用于资源回收的 SSLContext.free 调用放在了 OpenSslClientContext 的 finalize（继承自 OpenSslContext）函数中。</p>
+<p>分析到这里基本就能得到 OpenSslClientContext 泄露的原因了。因为 OpenSslClientContext 在构造时会将一个匿名的 AbstractCertificateVerifier 子类对象作为证书的校验函数（简称为 verifier），通过调用 SSLContext.setCertVerifyCallback 存储到 Native Stack 上，必须在 OpenSslClientContext 销毁时主动调用 SSLContext.free 才能将这个 verifier 从 Native Stack 清除。而 SSLContext.free 是在 OpenSslClientContext 的 finalize 内，必须等到 OpenSslClientContext 被 GC 掉之后才会被调用。由于 verifier 是个匿名类，它含有隐含的指向了其所属 OpenSslClientContext 的引用，导致当 verifier 不被销毁时，其所在 OpenSslClientContext 也无法销毁，从而产生依赖环，verifier 的清理依赖 OpenSslClientContext 的清理，OpenSslClientContext 的清理又依赖 verifier 的清理。这种依赖环如果都是在堆内，JVM GC 的时候会自动检测依赖环，并将相互依赖的两个对象全部 GC 掉。但这里 verifier 比较特殊，它是直接存储在 Native Stack 上的，JVM GC 拿它没有办法。JVM GC 的管辖范围只有堆，Native Stack 可以理解为是它的上级，它无权过问。</p>
+<p>另外补充一点，上述问题虽然是在 OpenSslClientContext 中发现，但 OpenSslServerContext 中也有相同问题。</p>
+<h1 id="修复"><a href="#修复" class="headerlink" title="修复"></a>修复</h1><p>Bug 找到了，具体的 PR 请参考<a href="https://github.com/netty/netty/pull/5380" target="_blank" rel="external">这里</a>。修复办法就是将导致泄露的匿名 AbstractCertificateVerifier 子类对象修改为 static 的内部类，这样它不会包含指向其所在外部类的引用（即 OpenSslClientContext），从而不会阻碍外部类的 GC，也就避免了泄露的发生。</p>
+<p>问题是解决了，但究其根本原因是不是可以归结到 finalize 函数的使用呢？如果 OpenSslClientContext 没有使用 finalize，而是暴露一个类似 close 的接口，要求 OpenSslClientContext 的使用者主动调用 close，finalize 内只是打印日志，提醒使用者没有调用 close，这个问题是不是从一开始就不会存在了呢？<br>一般来说 finalize 出现的问题主要有以下几类：</p>
+<ol>
+<li>使用 finalize 的对象在创建和销毁时性能比正常的对象差；</li>
+<li>finalize 执行时间不确定。可能出现 heap 内虽然有很多拥有 finalize 函数的类对象，且这些对象都已死掉（从 GC Root 无法访问），如果遇到 GC 压力比较大等原因，这些对象的 finalize 还没有被触发，就会导致这些本来该被 GC 但没有被 GC 的对象大量存在于 Heap 中。</li>
+</ol>
+<p>猜想 Netty 这里使用 finalize 而不是明确提供一个 close 函数，主要是为了使用方便，毕竟 OpenSslContext 在大多数场景下在一个服务中只存在一两个对象，需要将其销毁的情况也许也不是很多。以上猜想<a href="https://github.com/netty/netty/issues/4958" target="_blank" rel="external">在这个 issue </a>中也得到了一定程度的印证，<a href="https://github.com/netty/netty/pull/5547" target="_blank" rel="external">并且 Netty 已经在修改这个问题</a>，让 OpenSslContext 实现 ReferenceCount 接口，在 finalize 之外又提供了 release 函数专门用于清理 Native 资源。</p>
+<p>所以分享这些经验来让大家引以为戒，finalize 要尽量少用，看着以为使用 finalize 很合理的地方还是有可能出现问题。</p>
+
+	
+
+	
+
 </article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2016/07/03/garbage-first-collector-understanding/" class="archive-article-date">
-  <time datetime="2016-07-03T07:39:30.000Z" itemprop="datePublished">Jul 3</time>
-</a>
-      
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a>
-    </h1>
-  
 
-    </header>
-  </div>
+
+
+
+	<article>
+	
+		<h1><a href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a></h1>
+	
+	<div class="article__infos">
+		<span class="article__date">2016-07-03</span><br />
+		
+		
+			<span class="article__tags">
+			  	<a class="article__tag-link" href="/tags/JVM/">JVM</a> <a class="article__tag-link" href="/tags/Java/">Java</a>
+			</span>
+		
+	</div>
+
+	
+
+	
+		<h1 id="总览"><a href="#总览" class="headerlink" title="总览"></a>总览</h1><p>缩写约定：</p>
+<p>YGC: Young Generation GC</p>
+<p>OGC: 针对 Old Generation 的 GC，对 G1 来说指 Mixed GC</p>
+<p>FGC: 针对整个 Heap 的 Full GC</p>
+<p>STW: Stop-The-World</p>
+<h2 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h2><ol>
+<li>适合大堆，因为不像 CMS 和 Parallel GC 在对老代进行收集的时候需要将整个老代全部收集，G1 收集老代一次只收集老代的一部分 Region</li>
+<li>G1 的 Heap 划分为多个 Region，Young Generation 和 Old Generation 都只是逻辑概念，不是物理上隔离又连续的空间</li>
+<li>G1 的新老代划分不是固定的，一个新代的 Region 在被回收之后可以作为老代 Region 使用，Young Generation 和 Old Generation 大小也会随着系统运行而调整</li>
+<li>G1 的新生代收集和 Parallel、CMS GC 一样是并发的 STW 收集，且每次 YGC 会将整个 Young Generation 收集</li>
+<li>G1 的 Old Generation 收集每次只收集一部分 Old Region，且这部分 Old Region 是和 YGC 一起进行的，所以称为 Mixed GC</li>
+<li>和 CMS 一样，G1 也有 fail-safe 的 FGC，单线程且会做 compaction</li>
+<li>G1 的 Old Generation GC (Mixed GC) 也是自带 compaction 的</li>
+<li>G1 没有永久代的概念</li>
+</ol>
+<h1 id="Young-Generation"><a href="#Young-Generation" class="headerlink" title="Young Generation"></a>Young Generation</h1><p>G1 的 Young Generation 逻辑上也划分为 Eden 和 Survivor。新生 Object 都是在属于 Eden 的一个 Region 上进行分配，Region 满了之后会从 available region 中再取一个新 Region 标记为 Eden 并继续将新生 object 放在里面。直到标记为 Eden 的 Region 数达到上限。到达上限后，触发 YGC。</p>
+<h2 id="TLAB"><a href="#TLAB" class="headerlink" title="TLAB"></a>TLAB</h2><p>既然 “新生对象都分配在 Eden”，而 Eden 是个全局的概念，应用内会申请分配内存创建新生对象的业务线程有很多，如果分配内存操作全部由这些业务线程直接去操作 Eden 就一定会产生竞争，因为属于 Eden 的 Region 是一个一个分配的，一个 Region 占满了才会去分配新的 Region。而竞争的存在就导致要用锁去保护 Eden ，才能保证多线程并发的从 Eden 分配内存不出问题。由于分配内存这个操作会非常频繁，只是用锁去保护 Eden 会出现大量的线程去抢占这个保护 Eden 的锁。所以有了 TLAB，Thread Local Allocation Buffer， 这么个优化，去减少业务进程对保护 Eden 的锁的竞争。</p>
+<p>Eden 中有一部分内存会划拨出来专门给 TLAB 使用，每个线程都有自己的 TLAB，这块内存是线程自己独占的，为的就是线程在分配内存的时候可以直接从 TLAB 上分配， 不用加锁。只有要分配的内存较大，超出了 TLAB 范围时才需要从 Eden 中以加锁的方式获取内存，或者如果特别大超过了 Region 的 50%，会作为 Humongous Object 专门划拨 Region 存放。</p>
+<h2 id="YGC"><a href="#YGC" class="headerlink" title="YGC"></a>YGC</h2><p>随着 Eden 内 Object 越来越多，越来越多的 available region 现在被标记为 Eden 并被占满，当标记为 Eden 的 Region 数达到上限时，会触发 YGC。</p>
+<p>每次 YGC 时 G1 从 available region 取一个新 Region 标记为 Survivor，将当前整个 Eden 和老 Survivor 中的 live object 找出来，并根据 live object 熬过的 YGC 次数判断是将其拷贝到这个新的 Survivor 还是拷贝(晋升)到 Old。</p>
+<p>Young Generation Object 每熬过一次 GC，age 就增长一岁。G1 会维护一个 age -&gt; object 的 hash 表，将 age 达到目标值的 object，晋升到 Old Generation。</p>
+<p>这个目标值一般称为 Tenuring Threshold，是根据 -XX:TargetSurvivorRatio 和 -XX:MaxTenuringThreshold 来动态计算得到的。</p>
+<h2 id="PLAB"><a href="#PLAB" class="headerlink" title="PLAB"></a>PLAB</h2><p>除了 TLAB 之外，还有个叫做 PLAB 的东西。YGC 时，live object 需要被拷贝到 Survivor Region 或者晋升到一个 Old Region。拷贝过程是并发的，会有多个 GC 线程一同处理，而目标 Survivor Region 和 Old Region 也是一个 Region 写满之后再分配另一个 available region 继续写。所以这些 GC 线程之间也存在竞争。所以 GC 过程中，会类似 TLAB 一样，从当前正在操作的 Region 上给这些 GC 线程都各自分配一块 Thread Local Buffer，拷贝 live object 时每个 GC 线程都是将 live object 优先拷贝到分配给自己的 Thread Local Buffer 上，这个 Thread Local Buffer 就叫做 PLAB，Promotion Lab，以避免加锁，减少竞争。</p>
+<h2 id="Young-Generation-大小"><a href="#Young-Generation-大小" class="headerlink" title="Young Generation 大小"></a>Young Generation 大小</h2><p>上面看到 YGC 触发时机是在 Eden 被占满时，而 Eden 在 Young Generation 中占比最大，也就是说 Young Generation 的大小会影响到 YGC 触发时间和频率。</p>
+<p>有三个量会影响到 Young Generation 大小：</p>
+<ul>
+<li>-XX:G1NewSizePercent 初始 Young Generation 大小，也是 Young Generation 的最小大小，默认 5%</li>
+<li>-XX:G1MaxNewSizePercent Young Generation 最大大小，默认 60%</li>
+<li>-XX:MaxGCPauseMillis GC 最大停顿时间，默认 200ms</li>
+</ul>
+<p>Young Generation 的大小只能在 -XX:G1NewSizePercent 和 -XX:G1MaxNewSizePercent 规定的范围内变化。</p>
+<p>MaxGCPauseMillis 会影响到 Young Generation 大小是因为 MaxGCPauseMillis 越小，留给 GC 的 STW 的时间越少，则趋向于减少 Young Generation 大小以减少 YGC STW 时间。每次 YGC 完毕，都会根据上面三个量和 G1 内部的一些统计量去计算 Young Generation 大小，然后实现 Young Generation 扩展或收缩。</p>
+<p>MaxGCPauseMillis 也不是越小越好。MaxGCPauseMillis 越小，Young Generation 也越小，从而有更多本来是 short-live 的 object 被过早晋升到 Old Generation。而 Old Generation GC 起来比较麻烦，标记清理过程比 Young Generation GC 要复杂的多，整体效率也低，就导致虽然 GC 停滞时间下降了，但 GC 次数可能增多，整体吞吐量下降的情况。并且 GC 次数增多也会导致对 CPU 占用增加，跟业务线程一起抢 CPU。</p>
+<p>Young Generation 的扩展或收缩在 GC 日志当中会体现:<br><img src="https://cloud.githubusercontent.com/assets/1115061/17271377/80db9c1c-56ac-11e6-9ba2-eb69502aff42.png" alt="image"></p>
+<p>上图看到 Eden 从 8008M 降低到 7936M，同样 Survivor 也有类似变化。而总 Heap 大小因为 -Xmx 和 -Xms 参数都调的 14G 所以 YGC 前后不会出现变化。</p>
+<p><strong>注意：</strong>如果 Young Generation 大小被明确规定，比如用 -Xmn 或者 -XX:NewRatio 限制，则 Young Generation 大小就不能根据 GC 实际的 Pause Time 而动态调节了，所以不要使用这类参数。上面 G1NewSizePercent 和 G1MaxNewSizePercent 规定的只是 Young Generation 范围，而不是固定的某个值。</p>
+<h1 id="RSet"><a href="#RSet" class="headerlink" title="RSet"></a>RSet</h1><p>G1 也属于分代收集器，G1 是从逻辑上划分 Young Generation 和 Old Generation，没有从物理存储空间上将不同代隔离开 ( Region 可以在 Old 和 Young Generation 之间切换)。分代收集的好处就是将 long-live object 和 short-live object 分开收集，从而不用每次 GC 都扫描整个 Heap，降低 GC 时间。那么 YGC 的时候，放入 CSet (一次 GC 中参与收集的所有 Region 组成的集合叫做 CSet)的只有 Young Generation Region，所有 Old Generation Region 都不会参与 YGC。于是就需要有机制去保证 Young Generation 上的 Object 在被 Old Generation Region 上某个 Object 引用时，这个 Young Generation 上的 Object 不能在 YGC 的时候被 GC 掉。所以需要有个地方能记录每个 Object 都被哪些引用指向，这些引用来自哪个 Region。</p>
+<p>另一方面，YGC 和 OGC 在执行完后都会有 live object 被搬迁到新的 Free Region 上，那么指向这些 live object 的引用就会发生变化，需要更新引用让其重新指向这个 live object 的新地址。所以也需要上述这个记录每个 Object 被哪些引用指向的机制，从而在 GC 后去更新引用。</p>
+<p>G1 中每个 Region 都会维护一个 Remember Sets，也叫 RSet，用于记录当前 Region 之外，有哪些 Region 有指向当前 Region 的引用。没有这个 RSet 的话，单拿 YGC 来说，每一次 YGC 在扫描完 Root 之后，都要再扫描一遍当前所有 Old Generation Region 以找出从 Old Generation 指向 Young Generation 的引用。</p>
+<p><strong>注意：</strong>看到 RSet 只会记录别的 Region 对本 Region 的引用，自己 Region 内部的引用无需 RSet 参与记录。</p>
+<h2 id="RSet-内引用构建"><a href="#RSet-内引用构建" class="headerlink" title="RSet 内引用构建"></a>RSet 内引用构建</h2><p>既然 RSet 是必须要有的，接下来就看看 RSet 内是怎么对引用关系进行记录的。</p>
+<p>因为每次 YGC 都会将整个 Young Generation 都放入 CSet，不存在哪个属于 Young Generation 的 Region 不参与 YGC 的情况。所以对 Heap 上的所有 Region 来说，被 Young Generation 内 Object 的引用指向是不需要记录到 RSet 中的。于是，RSet 内需要维护的引用只有两种：</p>
+<ul>
+<li>Old-to-young refernence</li>
+<li>Old-to-old refernence. </li>
+</ul>
+<p><img src="https://cloud.githubusercontent.com/assets/1115061/17271397/db5d8952-56ac-11e6-8fae-3fd7c772aead.png" alt="image"><br>(图片来自参考文献[1])</p>
+<p>看到上面图中，x Region 是 Young Region，y、z 是 Old Region。每个 Region 都有个配套的 RSet，x 的 RSet 有个指向 z 的记录，因为 z 是 Old  且有指向 x 的引用。z 虽然被 x 和 y 两个 Region 上的引用指向，但因为 x 是 Young Region，所以 z 的 RSet 中只有指向 y 的记录。同样的方式分析，y 的 RSet 没有任何记录，因为 y 只有被 x 指向的引用。</p>
+<h2 id="RSet-记录"><a href="#RSet-记录" class="headerlink" title="RSet 记录"></a>RSet 记录</h2><p>Region 和 Region 之间的 popular 程度是不同的，有的 Region 有更多的引用指向，有的则会少一些。如果一个 Region 特别 popular，有大量的引用指向这个 Region，该 Region 的 RSet 所要记录的引用也更多，GC 时扫描 RSet 的时间也更长。</p>
+<p>为了减少这种特别 popular 的 Region 的 RSet 处理时间(这里不光是能减少 GC 时间，还能减少各 GC 线程之间处理 RSet 时的不均匀性，越均匀越能发会多线程 GC 性能)，RSet 根据所属 Region “popular” 程度的不同，一共分为三种等级，sparse、fine 和 coarse。每个等级都有个 per-region-table (PRT) 用于存储引用信息。</p>
+<p>每个 Region 实际又能被细分为最小单个 512 字节的 heap chunk，称为 card。每个 card 都有个根据它地址构造出来的全局唯一 id ，这个唯一 id 不仅是在一个 Region 中唯一，在整个 Heap 中都是唯一的，并且能根据这个 id 立即找到对应的 card。说了半天的 RSet 记录指向 RSet 所属 Region 的引用，实际就是在 RSet 中记录指向这个 Region 引用所在 card 的唯一 id。</p>
+<p>当 RSet 处在 sparse 级别，PRT 中每个 entry 直接存引用当前 Region 所在 card 的 id，这种粒度下 RSet 扫描效率最高。当 Region popular 程度上升，指向该 Region 的引用越来越多，直接存 card id 会导致 PRT 过大。当 sparse PRT 内存储引用到达限制后，升级为 fine 级别的 PRT。</p>
+<p>fine 级别的 PRT 中每个 entry 不再直接存储 card id，具体存储内容拿下图来说。B 有个指向 A 的引用，当 A 的 RSet 升级到 fine 级别时，A 为 B 单独创建一个 Bitmap，将指向这个 Bitmap 的引用和指向 B Region 的引用一起存入 A 的 PRT 的 entry 中。</p>
+<p><img src="https://cloud.githubusercontent.com/assets/1115061/16544439/b42716f2-4138-11e6-8c8b-aa80b00ba319.png" alt="2016-07-01 7 10 10"></p>
+<p>并且在 B 对应的这个 Bitmap 会标识出 B 中哪个 card 有指向 A 的引用。从这里描述能看出来 fine 级别的 PRT 对引用的记录更间接一些，所以扫描的时候相对更慢一些。</p>
+<p>当 Region popular 程度继续升高，还是按上图说的，B 指向 A 的引用越来越多，B 对应的 Bitmap 达到上限之后，A fine 级别的 PRT 内 B 相关的 entry 会被删除，取而代之的是使用 coarse 级别的 PRT 来记录 B 指向 A 的引用。</p>
+<p>coarse 级别的 PRT 实际就是个 Bitmap，该 Bitmap 上每个 bit 代表当前 Heap 的一个 Region。拿上面例子来说就是将 A 的 coarse PRT 的 Bitmap 中代表 B 的 bit 置位，并且不再记录 B 中到底是哪个 card 含有指向 A 的引用。这也能看出来 coarse 级别 PRT 扫描起来耗时最大，必须扫描整个 B region 才能找到所有指向 A 的引用。</p>
+<p>除了上面结构之外，跟 RSet 相关的还有个全局的 card table，也是个基于 Bitmap 的结构，用于在 GC 时扫描 RSet 阶段记录已经扫过的 card，避免重复扫已经扫过的 card。每轮 GC 后这个 card table 会被删除。</p>
+<p>下面是一次真实 GC 记录，其中 Update RS, Scan RS 就是处理 RSet 的时间，Clear CT 是清理上面说的全局 card table 的时间。</p>
+<p><img src="https://cloud.githubusercontent.com/assets/1115061/16544449/f9a589ca-4138-11e6-9954-68f989881d04.png" alt="2016-07-01 7 34 34"></p>
+<h2 id="RSet-的更新"><a href="#RSet-的更新" class="headerlink" title="RSet 的更新"></a>RSet 的更新</h2><p>为了为每个 Region 维护 RSet，就一定涉及到 Region 内有引用被更新的时候，去更新这个 Region 对应的 RSet。</p>
+<p>RSet 在 Parallel Old 和 CMS GC 中也有使用，他们是通过 write barrier 来在 Region 内引用有更新的时候去对应的维护 RSet 的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">object.field = some_other_object</div></pre></td></tr></table></figure>
+<p>在执行例如上面语句的时候去更新 intergenerational reference。</p>
+<p>G1 是引入了两个 barrier，一个 pre-write barrier 和一个 post-write barrier。其中 pre-write barrier 会在后面叙述 G1 concurrent marking 的时候描述，这里只叙述 post-write barrier 功能和 G1 如何使用这个 barrier 去更新 RSet 。</p>
+<p>post-write barrier 在每次写入一个 reference 的时候被调用，应用内修改 reference 的地方肯定很多，所以这个 barrier 性能非常关键，执行的慢了会影响整个系统的运行。所以 G1 的这个 post-write barrier 只做很少的事情：</p>
+<ol>
+<li>判断这次 reference 写入是不是个 cross-region 的写入，reference 是否符合 old-to-old 或 old-to-young 的 RSet 修改条件；</li>
+<li>如果是 cross-region 的写入，则说明需要更新 RSet，于是将引用所在 card 和被引用的 Region 等信息存入一个叫做 update log buffer 或者 dirty card queue 的地方</li>
+<li>如果 update log buffer 写满了，就再申请一个新的 buffer 继续写，写满的 buffer 会放在全局的 list 中</li>
+</ol>
+<p>之后，由 concurrent refinement threads 去消费这个 update log buffer，拿到 buffer 后这个 GC refinement thread 会根据 buffer 内的信息，实际完成 RSet 更新工作，包括将 reference 记录在 RSet 中以及 RSet 粒度升级等工作。 </p>
+<p>concurrent refinement threads 是持续运行的，并且会随着 update log buffer 积累的数量而动态调节。有三个配置项 -XX:G1ConcRefinementGreenZone, -XX:G1ConcRefinementYellowZone, -XX:G1ConcRefinementRedZone 去控制在有多少积压的 buffer 时，使用多少 refinement threads。目的就是为了保证 refinement threads 一定要尽可能的跟上 update log buffer 产生的步伐。但是这个 refinement threads 不是无限增加的，有个 -XX:G1ConcRefinementThreads 能控制 refinement 线程数上限。</p>
+<p>如果一旦出现 refinement threads 跟不上 update log buffer 产生的速度，update log buffer 开始出现积压，mutator threads 即上面修改 reference 的线程就会协助 refinement 线程执行 RSet 的更新工作。这个 mutator threads 实际就是应用业务线程，当业务线程去参与 RSet 修改时，系统性能一定会受到影响，所以需要尽力去避免这种状况。</p>
+<p>个人理解这里 mutator threads 去帮助 refinement 线程更新 RSet，不是说 mutator thread 在修改 reference 的时候直接同步的更新 RSet，而还是采用上面异步的方式，只是每次写入一个 job 到 update log buffer，就从 update log buffer 中消费一个 job，从而保证 RSet 更新顺序。</p>
+<p>除了 Mutator Thread 和 Concurrent Refinement Thread 之外，GC 时真正处理清理工作的 Worker Thread 也会参与消费 update log buffer。可以看上面那张 YGC 实际日志的图，有个 Update RS 过程，这个过程就是在消费 GC 时 Concurrent Refinement Thread 没有处理完的 Update log buffer。</p>
+<p><img src="https://cloud.githubusercontent.com/assets/1115061/16544448/f72dab3c-4138-11e6-9e6d-40e212ccc196.png" alt="2016-07-03 10 21 08"></p>
+<p>看到下图是一个线程快照，能看到有很多 Concurrent Refinement Thread 处在运行中。</p>
+<p><img src="https://cloud.githubusercontent.com/assets/1115061/16544440/b7d7aff0-4138-11e6-86ef-a2eb93d1092f.png" alt="2016-07-01 10 16 17"></p>
+<h1 id="YGC-日志"><a href="#YGC-日志" class="headerlink" title="YGC 日志"></a>YGC 日志</h1><p><img src="https://cloud.githubusercontent.com/assets/1115061/19113472/54ef4e9a-8b3c-11e6-8265-165ae585e56f.png" alt="image"></p>
+<p>[GC pause (G1 Evacuation Pause) (young), 0.2604517 secs]</p>
+<p>第一行是 GC 开始时间和 GC 用时。下面分部分说明 GC 日志内容。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">[Parallel Time: 236.3 ms, GC Workers: 18]</div><div class="line">[GC Worker Start (ms): Min: 7181358.2, Avg: 7181358.5, Max: 7181359.2, Diff: 0.9]</div><div class="line">[Ext Root Scanning (ms): Min: 5.7, Avg: 20.8, Max: 47.3, Diff: 41.7, Sum: 374.2]</div><div class="line">[Update RS (ms): Min: 46.1, Avg: 72.0, Max: 87.1, Diff: 40.9, Sum: 1296.3]</div><div class="line">   [Processed Buffers: Min: 72, Avg: 118.2, Max: 179, Diff: 107, Sum: 2128]</div><div class="line">[Scan RS (ms): Min: 0.1, Avg: 0.3, Max: 0.5, Diff: 0.4, Sum: 6.0]</div><div class="line">[Code Root Scanning (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.1]</div><div class="line">[Object Copy (ms): Min: 141.9, Avg: 142.2, Max: 142.6, Diff: 0.7, Sum: 2559.4]</div><div class="line">[Termination (ms): Min: 0.1, Avg: 0.4, Max: 0.6, Diff: 0.5, Sum: 6.8]</div><div class="line">   [Termination Attempts: Min: 1, Avg: 209.6, Max: 313, Diff: 312, Sum: 3773]</div><div class="line">[GC Worker Other (ms): Min: 0.0, Avg: 0.1, Max: 0.2, Diff: 0.2, Sum: 2.0]</div><div class="line">[GC Worker Total (ms): Min: 235.1, Avg: 235.8, Max: 236.1, Diff: 1.0, Sum: 4244.7]</div><div class="line">[GC Worker End (ms): Min: 7181594.3, Avg: 7181594.3, Max: 7181594.4, Diff: 0.1]</div></pre></td></tr></table></figure>
+<p>这个是 YGC 中并发执行的过程。</p>
+<p>[GC Worker Start (ms): Min: 7181358.2, Avg: 7181358.5, Max: 7181359.2, Diff: 0.9]<br>这个是 GC 线程启动时间，Min, Max 是最早启动的线程和最晚启动线程的时间点，Avg 是 GC 线程启动平均时间点，Diff 是这些 GC 线程启动时间的偏差。一般来说 Diff 不会很大，如果很大，可能是 某个 GC 线程在执行什么任务，耽搁住了。</p>
+<p><strong>注意</strong> 这里强烈怀疑 GC worker 就是 Concurrent Refinement Thread。GC 开始后，Refinement Thread 开始变成 GC worker 专心处理 GC 事务。因为这个过程中是 STW 的，refinement thread 也没有工作要执行。GC worker start 的时间不统一，有可能是 refinement thread 在处理 RSet 更新的时候有的 RSet 更新时间长，有的短，如果某个 RSet 更新时间较长，把 refinement thread 占用时间长了，这里 GC Worker Start 的 Diff 就偏差较大。</p>
+<p>[Ext Root Scanning (ms): Min: 5.7, Avg: 20.8, Max: 47.3, Diff: 41.7, Sum: 374.2]<br>扫描 off heap 上指向参与当前 GC 的 CSet 内 Region 的引用。off heap 主要是 JVM system dictionary，VM data structur，JNI thread handles，hardware register，global variable，thread stack root 等。</p>
+<p>[Update RS (ms): Min: 46.1, Avg: 72.0, Max: 87.1, Diff: 40.9, Sum: 1296.3]<br>[Processed Buffers: Min: 72, Avg: 118.2, Max: 179, Diff: 107, Sum: 2128]<br>消费 update log buffer 队列，取出 buffer 后更新 RSet。</p>
+<p>[Scan RS (ms): Min: 0.1, Avg: 0.3, Max: 0.5, Diff: 0.4, Sum: 6.0]<br>扫描 RSet，RSet 上引用的 object 都是 Old Generation 上指过来的引用，被引用的对象都标记为 live。</p>
+<p>[Code Root Scanning (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.1]<br>G1 没有永久代，所有 code cache 还是会放在内存中，也会参与 GC。这里会扫描所有 Code Root。</p>
+<p>[Object Copy (ms): Min: 141.9, Avg: 142.2, Max: 142.6, Diff: 0.7, Sum: 2559.4]<br>真正的清理工作执行时间。将 live object 拷贝到空的地方。</p>
+<p>[Termination (ms): Min: 0.1, Avg: 0.4, Max: 0.6, Diff: 0.5, Sum: 6.8]<br>[Termination Attempts: Min: 1, Avg: 209.6, Max: 313, Diff: 312, Sum: 3773]<br>GC 线程的工作都会放入队列，之后被 GC 线程从队列消费后执行工作内容。当队列消费完毕之后，会取别的线程的任务去执行。如果别的线程队列都是空的，他就开始进入 termination 环节，等待所有线程全部执行完毕之后，结束 GC 过程。GC 线程在 termination 环节停留的时间就是这里的 Termination 时间。Termination Attempts 是线程尝试 Terminate 的次数，如果尝试 Terminate 时发现别的线程还有工作要做，就放弃 Terminate，完成工作之后再重新 Terminate。</p>
+<p>[GC Worker Other (ms): Min: 0.0, Avg: 0.1, Max: 0.2, Diff: 0.2, Sum: 2.0]<br>除了上述主要过程之外，其它过程消耗的时间。</p>
+<p>[GC Worker Total (ms): Min: 235.1, Avg: 235.8, Max: 236.1, Diff: 1.0, Sum: 4244.7]<br>GC Parallel 过程总时间</p>
+<p>[GC Worker End (ms): Min: 7181594.3, Avg: 7181594.3, Max: 7181594.4, Diff: 0.1]<br>GC Parallel 过程结束时间，跟 GC Worker Start 对应。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line"> [Code Root Fixup: 0.5 ms]</div><div class="line">  [Code Root Purge: 0.0 ms]</div><div class="line">  [Clear CT: 1.7 ms]</div><div class="line">  [Other: 22.0 ms]</div><div class="line">     [Choose CSet: 0.0 ms]</div><div class="line">     [Ref Proc: 12.8 ms]</div><div class="line">     [Ref Enq: 0.6 ms]</div><div class="line">     [Redirty Cards: 1.2 ms]</div><div class="line">     [Humongous Register: 1.4 ms]</div><div class="line">     [Humongous Reclaim: 0.1 ms]</div><div class="line">     [Free CSet: 2.6 ms]</div><div class="line">  [Eden: 5556.0M(5556.0M)-&gt;0.0B(228.0M) Survivors: 444.0M-&gt;488.0M Heap: 11.6G(14.0G)-&gt;6338.3M(14.0G)]</div><div class="line">[Times: user=3.47 sys=0.26, real=0.26 secs]</div></pre></td></tr></table></figure>
+<p>以上这些都是单个 GC 线程执行的了，不再是并发过程。</p>
+<p>[Code Root Fixup: 0.5 ms]<br>因为 GC 的原因，有一些 object 的位置会出现变更，如果这个 object 是被 code root 引用，这里更新 code root 的引用。</p>
+<p>[Code Root Purge: 0.0 ms]<br>对 Code Root 进行清理。</p>
+<p>[Clear CT: 1.7 ms]<br>清理 Card Table。这个 table 用于记录扫描过的 RSet，避免重复扫描 RSet。</p>
+<p>[Choose CSet: 0.0 ms]<br>如果是 YGC，这个时间永远是 0，因为 YGC 时 CSet 就是整个 Young Generation。只有 Mixed GC 才会需要从 Old Generation 选出一部分 Region 放入 CSet 所以会消耗时间。</p>
+<p>[Ref Proc: 12.8 ms]<br>处理 soft、weak、phantom、final、JNI 等等引用的时间。</p>
+<p>[Ref Enq: 0.6 ms]<br>soft, weak, phantom 等引用在 GC 掉之后都会将通知信息放在 ReferenceQueue 上。</p>
+<p>[Redirty Cards: 1.2 ms]<br>在执行将 reference enqueue 时，可能有 RSet 被更新了，这时候要标记这些 RSet 为 dirty，处理一下。</p>
+<p>[Humongous Register: 1.4 ms]<br>不知道干嘛的。</p>
+<p>[Humongous Reclaim: 0.1 ms]<br>reclaim 是清理 Humongous object。</p>
+<p>[Free CSet: 2.6 ms]<br>清理 CSet。</p>
+<h1 id="Old-Generation"><a href="#Old-Generation" class="headerlink" title="Old Generation"></a>Old Generation</h1><p>接下来再看看 Old Generation 相关内容。熬过一定次数 YGC 的 live object 会被晋升到 Old Generation，于是 Old Generation 内存占用会越来越大，并且晋升到 Old 之后之前本来 live 的 object 可能随着使用也变成 dead object 了，也需要去 GC。</p>
+<p>当 Old Generation 空间占用整个 Heap 比例超过目标值(-XX:InitiatingHeapOccupancyPercent, IHOP)后，开始 OGC 过程。</p>
+<p><strong>注意：</strong>CMS 是 Garbage 占到整个 Old Generation 比例超过某个值后开始 OGC。而这里 G1 是 Old Generation Garbage 占整个 Heap 的比例。</p>
+<p>G1 的 OGC 也是分为 marking 和 sweeping 两个过程。marking 阶段找到当前 Old Generation Heap 中所有 live 的 object，sweeping 过程将 live object 拷贝到新的 available region 从而留下 Garbage 在老的 Region ，之后直接清理掉这些老的 Region。live object 拷贝到 available region 时 live object 是紧挨着排列的，所以没有碎片。清理过程自带 compat 效果。</p>
+<p>G1 OGC 最大的特色就是不是一口气将整个 Old Generation 全部清理，从而减小 Old Generation 大小对清理 Old Generation 时间的影响。类似 CMS 或 Parallel 因为每次针对 Old Generation 的清理都要一口气将 Old Generation 全部清理干净，于是 Old Generation 越大，清理的时间越长，所以在大堆上容易产生超长 GC。</p>
+<h2 id="G1-OGC-Marking"><a href="#G1-OGC-Marking" class="headerlink" title="G1 OGC Marking"></a>G1 OGC Marking</h2><p>当 Old Generation 空间占用整个 Heap 比例超过 IHOP 后，下一次 YGC 时就会开始 initial-mark，STW 且并发的标记所有 Root Object。跟着 YGC 一起是因为 YGC 本就需要标记一次所有 Root object。也正因为 initial-mark 是在 YGC 中进行的，所以 concurrent marking 开始的时候只用标记 Old Generation Region 就行了，Young Generation 的 Eden 此时都被清理完了，Survivor 是算作 live object 存在的。</p>
+<p>initial-mark 结束后开始 concurrent root scanning. 因为 initial-mark 就是一次 YGC。YGC 后 live Object 都放在 Survivor Region 中。这个过程就是标记所有 Survivor 内 Object 引用的对象。这个过程跟它名字指示的一样是并发的，唯一限制是必须在下一次 YGC 之前完成，因为下一次 YGC 就会产生新的 Survivor ，很有可能跟当前 Survivor 完全不同。</p>
+<p>之后是 concurrent marking。大部分 mark 工作都在这里完成。后面会详细再说。这个过程是并发的，对业务的影响主要是降低业务的 throughput.</p>
+<p>concurrent marking 结束后开始 STW 的 remark. 标记所有因为 concurrent marking 阶段 marking 线程和业务线程并发运行而导致的没有标记到的 live object.</p>
+<p>remark 完毕后，开始 clean up. 如果 mark 阶段找到没有任何 object 存活的 region，该 region 在该阶段直接被放入 available regions.</p>
+<h3 id="G1-Concurrent-Marking"><a href="#G1-Concurrent-Marking" class="headerlink" title="G1 Concurrent Marking"></a>G1 Concurrent Marking</h3><h4 id="Marking-算法"><a href="#Marking-算法" class="headerlink" title="Marking 算法"></a>Marking 算法</h4><p>G1 的这套 Marking 算法借鉴了 Taiichi Yuasa 的 Snapshot-at-the-beginning (SATB) 算法，并进行了一些改进。Marking 的最基本目标就是在 Heap 耗尽之前，完成对整个 Heap 的 marking 工作，从而能够在 Heap 耗尽前开始清理。</p>
+<p>SATB 内部会对 Heap 维护一个 Snapshot，标记工作也是在这个 Snapshot 上进行。SATB 保证：</p>
+<ol>
+<li>所有在 concurrent marking 阶段开始时 live 的 object ，一定会被 marked and traced；</li>
+<li>所有在 concurrent marking 过程中产生<strong>或死掉</strong>的 object 都一定被标记为 live 并且不被 traced ;</li>
+</ol>
+<p>SATB 会维护两个 bitmap，preivous 和 next。previous bitmap 存的是上一次完成的 marking 信息，当前 marking 阶段会创建并更新 next bitmap。随着 marking 阶段的进行，next bitmap 会逐渐被完善，当 next bitmap 拥有整个 Heap 的 marking 信息后，next bitmap 会替代 previous bitmap。</p>
+<p>在 G1 Region 上，有两个 top-at-mark-start (TAMS) 标记位，一个是标记上一次 marking 阶段使用的 TAMS，也称为 PrevTAMS；另一个用来标记本次 marking 阶段，也称为 NextTAMS。</p>
+<p>Marking 过程如下图：<br><img src="https://cloud.githubusercontent.com/assets/1115061/16544442/d1748c76-4138-11e6-902d-7c37b6bb0843.png" alt="2016-07-03 12 23 19"><br>(该图片引自参考文献 [2])</p>
+<p>上面图是连续两次 mark 的过程。下面对每一步进行解释：<br>A: PrevBitmap 和 NextBitmap 都是空的，说明这是个新 Region，没有经历过 marking 阶段。Bottom 和 Top 之间是 Region 当前已经分配的空间。因为没有经历过 marking，PrevTAMS 指向 Bottom。NextTAMS 不管 Region 之前是否经历过 marking，initial marking 的时候都会指向 Top。</p>
+<p>B: 在 Remark 阶段结束之后，来到了图中 B 指示的阶段。看到 NextBitmap 上已经被标记了哪些是 live object，没被标记的就是 dead object。NextTAMS 到 Top 之间的 object 是 concurrent marking 阶段，因为业务线程跟 marking 线程并发运行而新产生的 object。按照 SATB 之前说的，这部分 object 全部认为是 live 的。也正是因为这个原因，本次 marking 只针对 PrevTAMS 到 NextTAMS 之间的区域进行标记。</p>
+<p>C: Cleanup 阶段，NextBitmap 替换 PrevBitmap，因为 marking 工作已经完成，NextBitmap 已经有了整个 Heap 的信息。<strong>注意：</strong>NextBitmap 和 PrevBitmap 实际都是全局的一个 Bitmap，是标识整个 Heap 的。上图中 Bitmap 看上去跟 Region 绑定只是为了方便看，便于理解。</p>
+<p>D: 能到 D 这个阶段，这个 Region 经历两次 initial marking，说明在上一次 marking 后，这个 Region 并没有被收集。后面会说，G1 的 Mixed GC 不是一定要在整个 Heap 上所有 dead object 都被收集干净了才停止，而是只要根据 marking 提供的 dead object 占用的空间在整个 Heap 中占比小于一定值后，就停止收集。所以完全是有可能存在能经历两次甚至更多次 marking 的 Region。从 D 能看到 Top 相对于 C 增长了一些，说明上次 marking 结束后，这个 Region 上又有新晋升上来的 object。跟 A 一样，PrevBitmap、PrevTAMS 保持不变，创建 NextBitmap，NextTAMS 指向 Top。并且看到 PrevBitmap 没有变化，因为不经历 makring 这个 bitmap 是不可能变化的。</p>
+<p>E: 跟 B 一样，Remark 结束，Bottom 到 NextTAMS 之间所有 live object 都被标识出来，NextTAMS 到 Top 之间是本轮 concurrent marking 阶段新晋升的 object，直接被标记为 live。<strong>注意：</strong>看到第二次 marking 的时候 mark 的还是 Bottom 到 NextTAMS，上一轮已经被 mark 过的 Bottom 到 PrevTAMS 的还是会参与 marking。</p>
+<p>F: 跟 C 一样，NextBitmap 替换 PrevBitmap。NextBitmap 被清理。</p>
+<p>从上面看到 Marking 阶段实际就是为了维护 PrevBitmap，有了这个 Bitmap，就能知道一个 Region 上有多少 live object，从而能够根据 dead object 空间占比来排序，找出 GC 效率最高的 Region 来 GC。</p>
+<h4 id="marking-过程"><a href="#marking-过程" class="headerlink" title="marking 过程"></a>marking 过程</h4><p>在了解了 Marking 算法过程之后，再回过头来看一遍并发标记的所有阶段。</p>
+<h5 id="Initial-Marking"><a href="#Initial-Marking" class="headerlink" title="Initial Marking"></a>Initial Marking</h5><p>之前说过了，就是 STW 的标记所有 roots 直接指向 object 。</p>
+<p>root object 指的就是能被 heap 之外引用的对象，比如 native stack objects，JNI local 或 global object 等。</p>
+<p>因为 YGC 的时候也是要 STW 的扫描 roots ，所以 initial-mark 都是 piggybacking 到一个 YGC 上进行的，并且会将每个 Region 的 NextTAMS 设置为各自 Region 的 Top 指向的值。</p>
+<h5 id="Root-Region-Scanning"><a href="#Root-Region-Scanning" class="headerlink" title="Root Region Scanning"></a>Root Region Scanning</h5><p>设置完每个 Region 的 NextTAMS 之后，STW 阶段结束，业务线程被重启运行。initial-marking 阶段拷贝到 Survivor Region 的 object 都被认为是 marking roots，需要在本阶段被 scan 。所有被 Survivor Region 内 Object 引用的 Object 都需要被 mark，认为是 live 的。</p>
+<p>Root Region Scanning 必须在下一次 YGC 之前完成，不然 Survivor 又被更新了，标记过程就算是失败了，会重新触发标记。</p>
+<h5 id="Concurrent-Marking"><a href="#Concurrent-Marking" class="headerlink" title="Concurrent Marking"></a>Concurrent Marking</h5><p>这个阶段就是并发的标记所有 live object，参与 concurrent marking 的线程数由 -XX:ConcGCThreads 规定，如果没有设置默认就是 -XX:ParallelGCThreads 的四分之一。</p>
+<p>之前在描述 RSet 功能的时候说过，G1 引入了两个 write barrier，一个 post-barrier 在 RSet 那里用来每次修改引用的时候维护 RSet，还有一个 pre-write barrier 是在 concurrent marking 这个阶段使用的。</p>
+<p>之前说过，SATB 的保证是，在 marking 阶段开始时所有的 live object 都会在 marking 结束的时候被标记出来，所有 marking 过程中新生或死亡的 object 都被认为是 live object。新生的对象因为都会在 NextTAMS 到 Top 之间，所以没有什么需要特殊处理的。但 marking 过程中 dead 的 object 需要特殊处理，这里 pre-write 就是干这个特殊处理的。</p>
+<p>比如在 concurrent marking 过程中，业务线程执行如下语句：</p>
+<figure class="highlight plain"><figcaption><span>java</span></figcaption><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"> </div><div class="line">x.f = y</div></pre></td></tr></table></figure>
+<p>也就是说修改了 x 这个 object 中 f 这个引用，另其指向了 y 。那么 x.f 原本指向的 object 可能死亡了也可能还活着，根据 SATB 的要求，需要将其标记为 live。pre-write 的代码逻辑类似：</p>
+<figure class="highlight plain"><figcaption><span>java</span></figcaption><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line"> </div><div class="line">if (is-marking-active) &#123;</div><div class="line">  prev = x.f;</div><div class="line">  if (prev != Null) &#123;</div><div class="line">    satb_enqueue(prev);</div><div class="line">  &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure> 
+<p>也就是说如果在 marking 过程中，x.f 的引用发生改变，需要将 x.f 原本指向的 object 放入 satb_enqueuey 以异步的方式将 x.f 原本指向的 Object 标记为 live。</p>
+<p>satb_enqueue() 是将 prev 放入一个 thread local buffer，也称为 SATB buffer。SATB buffer 有个初始大小，每个业务线程都会有这么个 buffer。当业务线程的 SATB buffer 被占满后，JVM 会再分配一个新的空 SATB buffer 给这个线程使用，写满的那个 SATB buffer 就放在一个全局的 list 中。</p>
+<p>执行 concurrent marking 的线程在 scan object 和 mark live object 过程中，会定时的过来查看这个 global list，从中读出 SATB buffer 然后将对应的 object 标记为 live ，被这个 object 指向的所有 object 最终也会被标记为 live。</p>
+<p>concurrent marking thread 在 marking 过程中还会计算 live object 数量。从而为之后的清理过程提供参考数据。</p>
+<p>问题：</p>
+<ol>
+<li>假若一开始有 x.f = z，之后执行了 x.f = y。为何必须标记 z 为 live，不这么标记可以吗？如果执行 x.f = y 的时候，z 就是死掉的，那么就没必要再标记 z，本轮 GC 就能将 z GC 掉。如果 z 还活着，说明 z 能够不依赖 x 这个对象而存在，说明 z 还被别的 live 的对象所指向，所以 z 也是不需要被标记的。</li>
+</ol>
+<p>答：不这么补充标记 z 是不行的。这里原因我认为是由于业务线程和 GC 线程并发执行，无法确定在 x.f = y 执行之后，z 是否可能被 “救活”。所以必须将 z 标记为 live，<strong>宁可错误标记都不能漏标记</strong>。</p>
+<p>比如业务线程需要执行如下伪代码：</p>
+<figure class="highlight plain"><figcaption><span>java</span></figcaption><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">x.f = z      // 假如一开始 x.f 是指向 z 的</div><div class="line"></div><div class="line">m = z        // 将 z 找个中间变量记录下来</div><div class="line">x.f = y      // 修改 x.f 的引用，此时 z 可能确实是死掉了</div><div class="line"></div><div class="line">w.f = z      // 将 z 救活</div></pre></td></tr></table></figure>
+<p>上述执行过程一定是在某个线程的 Thread Stack 上，但 Thread Stack 在 Concurrent Marking 过程中已经被扫描过了，不会再次扫描，所以 z 交给 m 之后，m 虽然确实在 Thread Stack 上，但并非被 GC Root 引用，必须有其它 live 的对象引用才能被标记为 live。m 是当前 Stack 上的本地变量，是新生成的，在之前 initial-mark 时根本不存在，所以不可能参与标记。</p>
+<p>假若 pre-write barrier 不存在。在上述伪码第 1 行，w 对象因为被别的 live 对象引用，已经标记为 live。此时 w.f 还未指向 z 所以 z 不会被标记。</p>
+<p>执行到第 4 行，x.f = y 执行时如果不用 pre-write barrier 去补充标记 z，z 此时此刻确实是 Dead Object，没有任何从 GC Root 能够到达它的路径。</p>
+<p>执行到第 6 行，w.f = z，上面说了此时 w 已经被标记过是 live，w.f = z 执行后 z 也重新有了从 GC Root 指向的引用链，但如果没有 write barrier 的协助，z 就漏标记了。</p>
+<p>还是之前说的宁可错误标记，将 Dead Object 标记为 live，也不能漏标记。错误标记会在下一次 GC 的时候得到修正，但漏标记就没有修正机会了。</p>
+<ol>
+<li>为什么非要用 prev-write barrier，为什么不用 post-write barrier? 还是拿上面的例子来说，x.f = y 执行的时候需要将 x.f 之前指向的对象 z 标记为 live。但 x.f = y 执行完之后再去执行这个补标记 z 的过程为何不行，非要在 x.f = y 执行之前就去补标记 z ？</li>
+</ol>
+<p>答：为了说清楚问题，可能得先尝试一下使用 post-write barrier 是什么样子的。比如如果用 post-write barrier 去补充标记 z，伪码大概是这个样子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">x.f = z       // 这里还是认为 x.f = z 是一开始就存在的</div><div class="line"></div><div class="line">if (is-marking-active) &#123;</div><div class="line">  prev = z      // 先把 z 找个地方存放一下</div><div class="line">&#125;</div><div class="line"></div><div class="line">x.f = y       // 业务代码</div><div class="line"></div><div class="line">if (is-marking-active) &#123;</div><div class="line">  if (prev != Null) &#123;</div><div class="line">    satb_enqueue(prev);</div><div class="line">  &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>也就是说一方面，如果使用 post-write barrier 还是需要用到 pre-write barrier，因为需要在 x.f = y 执行之前记录 x.f 之前指向的 z 对象。看到 is-marking-active 需要判断两次，因为只有在 marking 过程中，记录这个 prev 才是有意义的，不在 marking 中是不需要记录这个 prev 的。这个样子还不如使用一个 pre-write barrier 来的简单。</p>
+<p>另一方面，以上 barrier 还是业务线程执行的代码，业务线程和 GC 线程之间的顺序和时间是无法确定的。不能确认业务线程在执行了第 7 行之后，是否能在 GC 标记过程结束前将 prev 成功存入 satb queue。如果没来得及将 z 放入 satb_enqueue 去补充标记 z 时，GC 线程并发标记过程就结束了，会造成 z 对象漏标记。</p>
+<ol>
+<li>为什么说 concurrent marking 过程不会去参照 PrevBitmap 呢？Marking 过程中，参照前一次 Marking 的结果是不是能让本轮 Marking 执行的更快一些呢？</li>
+</ol>
+<p>答：这个的结论是 Marking 过程不会参考前一次留下来的 PrevBitmap。原因是，标记过程都是在标记 live object，真正关心的是 Heap 上当前有哪些 live 的 object 存在。而 PrevBitmap 上标记出来的 live object 是上一次 GC 时 live 的 object，现在这些 object 可能已经死掉了。</p>
+<p>那遍历一遍 PrevBitmap 只去查看上一次 live 的 object 是否还 live 不是会更快一些吗？因为可以跳过已经确认死掉的 Object。</p>
+<p>一个 object 是否 live 是看他有没有被 GC Root 指向。而 initial mark，concurrent root scanning，concurrent mark，Remark 等等都是在从 GC Root 追踪引用，追踪完了才能判断出来一个 object 是否是 live。等这些过程完成之后，PrevBitmap 实际已经没用了。在 PrevBitmap 上留下来的信息也随之可以丢弃。</p>
+<h5 id="Remark"><a href="#Remark" class="headerlink" title="Remark"></a>Remark</h5><p>该过程是个并发的 STW 过程。GC 线程会将 SATB buffer 消费干净，并将 buffer 中指定 object 标记为 mark ，也将被这些 object 指向的 object 标记为 live。这也是为什么 Remark 必须是 STW 的，因为如果业务线程持续运行，GC 线程就不可能将 SATB buffer 消费干净。</p>
+<h5 id="Cleanup"><a href="#Cleanup" class="headerlink" title="Cleanup"></a>Cleanup</h5><p>这个阶段之前说过，也是并发执行的，且不会 STW。在这个阶段 Next marking bitmap 会替代之前的 Previous marking bitmap，将 PrevTAMS 设置为 NextTAMS 的值。</p>
+<p>这个阶段三个最耗时的操作是：</p>
+<ol>
+<li>根据每个 Region 的 garbage 占用情况，和 RSet popular 程度评估每个 Region 的 GC 效率，并根据 GC 效率将 Region 排序。</li>
+<li>发现没有 live object 的 Region 时直接将其清理。</li>
+<li>对每个 Region 的 RSet 进行清理，比如发现一个 card 中指向当前 Region 的 Object 都 dead 了，就直接清理这个 RSet 内的记录。因为之后无论是 YGC 还是 Mixed GC 都会扫描这个 RSet，将其清理一下有助于提升之后清理过程中 RSet 扫描效率。</li>
+</ol>
+<h3 id="Marking-日志"><a href="#Marking-日志" class="headerlink" title="Marking 日志"></a>Marking 日志</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div></pre></td><td class="code"><pre><div class="line">2016-07-12T18:04:15.484+0800: 6436.051: [GC concurrent-root-region-scan-start]</div><div class="line">2016-07-12T18:04:15.733+0800: 6436.301: [GC concurrent-root-region-scan-end, 0.2494835 secs]</div><div class="line">2016-07-12T18:04:15.733+0800: 6436.301: [GC concurrent-mark-start]</div><div class="line">2016-07-12T18:04:16.665+0800: 6437.233: [GC concurrent-mark-end, 0.9322241 secs]</div><div class="line">2016-07-12T18:04:16.671+0800: 6437.238: [GC remark 2016-07-12T18:04:16.671+0800: 6437.238: [Finalize Marking, 0.0020818 secs] 2016-07-12T18:04:16.673+0800: 6437.240: [GC ref-proc, 0.1690421 secs] 2016-07-12T18:04:16.842+0800: 6437.409: [Unloading, 0.0219765 secs], 0.2116673 secs]</div><div class="line"> [Times: user=1.55 sys=0.20, real=0.21 secs] </div><div class="line">2016-07-12T18:04:16.887+0800: 6437.455: [GC cleanup 7275M-&gt;6699M(14G), 0.0357972 secs]</div><div class="line"> [Times: user=0.38 sys=0.02, real=0.04 secs] </div><div class="line">2016-07-12T18:04:16.923+0800: 6437.491: [GC concurrent-cleanup-start]</div><div class="line">2016-07-12T18:04:16.924+0800: 6437.492: [GC concurrent-cleanup-end, 0.0007694 secs]</div></pre></td></tr></table></figure>
+<p>Marking 阶段的日志相对 YGC 时候的日志来说要简单很多，没有什么特别的地方，都是 Start、End。</p>
+<p>GC ref-proc 和 YGC 时候的 Ref proc 是类似的，也是在处理 soft、weak、phantom 引用。以前遇到过一个使用 Netty 的服务这个 ref-proc 时间特别长的例子，因为 Netty 内使用 phantom 引用比较多，ref-proc 又是单线程的，所以执行的时间特别长，能停滞十几秒这种。之后开启了 -XX:+ParallelRefProcEnabled，时间立即降低到 0.X 秒，非常神奇。这个参数是开启并发的处理 ref-proc。</p>
+<h2 id="G1-OGC-Sweeping"><a href="#G1-OGC-Sweeping" class="headerlink" title="G1 OGC Sweeping"></a>G1 OGC Sweeping</h2><p>remark 阶段完毕后，G1 就完成了对整个 heap 的标记，能知道整个 heap 中有哪些 object 是 live 的。在接下来的几次 YGC 中，会从待收集的所有 Region 中依次选出 GC 效率最高的 Region 组成本次回收的 CSet，来执行 GC，也即 Mixed GC. “GC 效率最高” 一般是有两个指标，一个是 Region 内 live object 多少，live object 占空间最少的 Region，GC 效率越高。即 Garbage 越多的 Region，GC 效率越高。这也是 Garbage First 的由来。另一个是 Region 的 “popular” 程度，越 “popular“ 的 Region 就有越多的 Region 含有引用指向这个 Region，其 RSet 扫描和更新操作耗时也越长。</p>
+<p>但也不是只要是有 dead object 就会被放入 CSet，而是有个参数去控制放入 CSet 的 Region 的选择。-XX:G1MixedGCLiveThresholdPercent，默认是 85% 即当一个 Region 内 live object 空间占比小于 85% 时，就会被放入 CSet。</p>
+<p>YGC 时 CSet 内全部是 Young Generation Region。OGC 时，CSet 内有一部分 Young Generation Region 也有一部分 O 区 Region。</p>
+<p>G1 的收集无论是 Old Generation 还是 Young Generation ，都是 live object 拷贝到一个 available region，拷贝过去后在这个新的 region 上每个 object 都是紧挨着排列的，所以没有 fragment.</p>
+<p>需要注意的是，Mixed GC 是 G1 最主要的清理内存的阶段，但 mixed GC 要求 marking 阶段必须结束，从而能知道 heap 中有哪些 live object，才能开始清理。如果 marking 阶段没结束 heap 就满了，G1 会先尝试扩大 heap，如果无法扩大，则使用 fail-safe GC 收集内存。</p>
+<p>Sweeping 阶段具体由几轮 Mixed GC 组成，每次 Mixed GC 需要收集多少个 Region，需要由两个参数决定：-XX:G1MixedGCCountTgarget 和 -XX:G1HeapWastePercent。</p>
+<p>-XX:G1MixedGCCountTarget 限定 Sweeping 阶段连续的 Mixed GC 最大次数。所有 Mixed GC 阶段待收集的 Region 总数，除以 G1MixedGCCountTarget 就是每轮 Mixed GC 最少需要清理的 Region 数。</p>
+<p>这里计算的是单次 Mixed GC 最少需要清理的 Region 数，还有一个 -XX:G1OldCSetRegionThresholdPercent 用于控制单次 Mixed GC 最多能收集多少 old regions。G1OldCSetRegionThresholdPercent 表示的是单次 mixed GC 能收集的 old region 占 Heap 的百分比。如果 Heap 大小不变，则这个值不会变化。</p>
+<p>-XX:G1HeapWastePercent 限定 Mixed GC 在 Garbage 占 Heap 空间的百分之多少的时候停止 Mixed GC。也就是说每次 Mixed GC 结束都会计算当前 dead object 占总 Heap 空间比例，当这个比例小于 G1HeapWastePercent 后，就停止 Mixed GC 即使现在还有 dead object 没有收集完也停止收集了。因为剩下的 Region 内可能剩余的 dead object 比例不是很多，收集起来效率很低。</p>
+<p>G1MixedGCCountTarget 决定 Mixed GC 最大次数，G1HeapWastePercent 决定 Mixed GC 实际次数。</p>
+<h3 id="Evacuation-Failures-And-FGC"><a href="#Evacuation-Failures-And-FGC" class="headerlink" title="Evacuation Failures And FGC"></a>Evacuation Failures And FGC</h3><p>Evacuation 过程中有三种情况会导致 G1 降级为 FGC 去收集内存：</p>
+<ol>
+<li>YGC 时，无法找到 available region 去存放 survive 的 object；</li>
+<li>Mixed GC 时，无法找到 available region 去存放 live object；</li>
+<li>无法找到足够大的连续的 Region 去存放 Humongous Object</li>
+</ol>
+<p>Humongous Object 后续会说。</p>
+<p>FGC 是单线程的，完成 mark 、 sweep、compation 工作。单线程的 FGC 效率最低，但也是最安全的。 </p>
+<p>如果真出现 FGC 了，日志会非常简单：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">2016-07-20T15:56:37.515+0800: 96764.890: [Full GC (Heap Dump Initiated GC)  8442M-&gt;2040M(14G), 7.0207811 secs]</div><div class="line">   [Eden: 2824.0M(6552.0M)-&gt;0.0B(8600.0M) Survivors: 532.0M-&gt;0.0B Heap: 8442.5M(14.0G)-&gt;2040.7M(14.0G)], [Metaspace: 85076K-&gt;85076K(1120256K)]</div><div class="line"> [Times: user=10.41 sys=0.54, real=7.02 secs]</div></pre></td></tr></table></figure>
+<h1 id="Humongous-Object"><a href="#Humongous-Object" class="headerlink" title="Humongous Object"></a>Humongous Object</h1><p>正因为无论是 Young Generation 还是 Old Generation，在 GC 的时候都会有 object 拷贝。Young Generation 一方面是将 object 从 Eden 拷贝到 Survivor ，另一方面是拷贝晋升的 object 到 Old 区。这种拷贝过程对特别大的 object 来说就很不经济。</p>
+<p>G1 中 Region 大小最小是 1MB，最大是 32MB。具体多大会根据 Heap 大小做设置，它是尽力去保证整个 Heap 被划分为大约 2048 个 Region。比如如果 Heap 有 16G，算下来 16G / 2048 = 8MB 即一个 Region 大概是 8MB。当然 2048 个 Region 也不是绝对的，如果 Heap 特别大或者特别小，Region 总数是可以超过或小于 2048。Region 总数也能通过参数精确设置 -XX:G1HeapRegionSize=n。</p>
+<p>回到 Humongous Object，G1 中内存占用超过当前单个 Region 50% 的 Object 就叫 Humongous Object，G1 对他们有单独的处理。</p>
+<p>Humongous Object 分配时会根据这个 object 大小，在 available regions 中找足够放下这个 object 的连续的数个 region，专门分配给这个 Humongous object 使用。如果找不到这么个连续的 region，G1 会直接使用 fail-safe 的 FGC 来清理并 compact heap。</p>
+<p>理解这里不先进行 YGC 或 OGC 的原因是 YGC 和 OGC 很多过程都是 concurrent 的，这个时候 Humongous Object 无法分配内存，无法让应用线程继续运行，必须执行完全的 STW 收集一次内存才行。<br><img src="https://cloud.githubusercontent.com/assets/1115061/16544443/d4082fe2-4138-11e6-99e0-ea98ae50d94c.png" alt="2016-07-03 12 16 36"></p>
+<p>更细的看上面存放 Humongous Object 的连续的 Region：<br><img src="https://cloud.githubusercontent.com/assets/1115061/16544448/f72dab3c-4138-11e6-9e6d-40e212ccc196.png" alt="2016-07-03 10 21 08"><br>看到连续的 Region 是由 StartsHumongous 和 ContinuesHumongous Region 组成的。</p>
+<p>开辟单独的区域存放 Humongous Object 是为了避免 long-live 的大对象在 GC 过程中的拷贝。开辟连续的 Region 只存放一个 Humongous Object 是为了让 G1 对 Humongous Object 更激进的进行收集，只要发现这个 object dead，就能将其所占用的 Regions 全部收集，不用去判断 Region 还有没有别的 object 使用，别的 object 是否还 live。比如在 marking 的 clean up 阶段、 YGC 和 FGC 时，发现 humongous object 没有任何引用，就会立即被收集。</p>
+<p>但正因为 Humongous Object 这种独特的分配机制，使得其无法享受到 TLAB 和 PLAB 带来的便利。</p>
+<h1 id="Heap-Size-调节"><a href="#Heap-Size-调节" class="headerlink" title="Heap Size 调节"></a>Heap Size 调节</h1><p>G1 heap 大小可以在 -Xms -Xmx 之间变化。</p>
+<p>G1 增大 heap 的时机有：</p>
+<ol>
+<li>FGC 时会根据应用行为计算预期 heap size，增大 heap；</li>
+<li>YGC 或 OGC 触发时，G1 计算 GC 花费的时间相对应用运行时间的比例，如果 GC 耗费时间比例过大(可通过 -XX:GCTimeRatio 调节，G1 默认是 9，其它 GC 是 99 也就是说其它 GC会更激进的扩展 heap size)，Heap size 会增加从而减少 GC 发生次数，增大单次 GC 所能收集的内存比例. </li>
+<li>分配内存失败时，在进行 fail-safe GC 之前，会先尝试扩展一下内存;</li>
+<li>无法为 Humongous object 找到足够大的连续 region 时，先尝试扩展内存，再 fail-safe;</li>
+<li>G1 GC 时将 live object 拷贝到一个 available region，如果找不到这么个 available region，会先尝试扩展内存，无法扩展则执行 fail-safe</li>
+</ol>
+<p>参考文献：</p>
+<p>[1] Charlie Hunt,Monica Beckwith,Poonam Parhar,Bengt Rutisson. Java Performance Companion. Addison-Wesley. ISBN-13: 978-0-13-379682-7</p>
+<p>[2] David Detlefs, Christine Flood, Steve Heller, Tony Printezis. Garbage-First Garbage Collection.ISMM’04, October 24–25, 2004, Vancouver, British Columbia, Canada. ACM 1-58113-945-4/04/0010.</p>
+<p>[3] Darko Stefanovic,Matthew Hertz, Stephen M. Blackburn,Kathryn S. McKinley,J. Eliot B. Moss†. Older-first Garbage Collection in Practice: Evaluation in a Java Virtual Machine.</p>
+<p>[4] Taiichi Yuasa. Real-Time Garbage Collection on General Purpose Machines. Journal of Systems and Software, Volume 11, Issue 3, March 1990, pp. 181-98. Elsevier Science, Inc., New York.</p>
+<p>[5] Tony Printezis and David Detlefs. A Generational Mostyly-Concurrent Garbage Collector. Proceedings of the 2nd Internaltional Symposium on Memory Management. ACM, New York, 2000, pp. 143-54. ISBN 1-58113-263-8</p>
+
+	
+
+	
+
 </article>
-  
-  
-    </div></section>
-  
-
-</section>
-        
-          <aside id="sidebar">
-  
-    
-
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Mot-clés</h3>
-    <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
-    </div>
-  </div>
 
 
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Nuage de mot-clés</h3>
-    <div class="widget tagcloud">
-      <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a>
-    </div>
-  </div>
-
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Archives</h3>
-    <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li></ul>
-    </div>
-  </div>
 
 
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Articles récents</h3>
-    <div class="widget">
-      <ul>
-        
-          <li>
-            <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
-          </li>
-        
-          <li>
-            <a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
-          </li>
-        
-          <li>
-            <a href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a>
-          </li>
-        
-      </ul>
-    </div>
-  </div>
-
-  
-</aside>
-        
-      </div>
-      <footer id="footer">
-  
-  <div class="outer">
-    <div id="footer-info" class="inner">
-      &copy; 2017 ylgrgyq<br>
-      Propulsé by <a href="http://hexo.io/" target="_blank">Hexo</a>
-    </div>
-  </div>
-</footer>
-    </div>
-    <nav id="mobile-nav">
-  
-    <a href="/" class="mobile-nav-link">Home</a>
-  
-    <a href="/archives" class="mobile-nav-link">Archives</a>
-  
-</nav>
-    
-
-<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 
-  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
-  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+	<span class="different-posts">📕 end of posts 📕</span>
 
-
-<script src="/js/script.js"></script>
-
-  </div>
-</body>
-</html>

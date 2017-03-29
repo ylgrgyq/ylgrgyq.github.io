@@ -1,97 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  
-  <title>不可变队列的实现 | Ylgrgyq Blog</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。
-不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更">
-<meta property="og:type" content="article">
-<meta property="og:title" content="不可变队列的实现">
-<meta property="og:url" content="http://yoursite.com/2017/03/27/persistent-queue/index.html">
-<meta property="og:site_name" content="Ylgrgyq Blog">
-<meta property="og:description" content="命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。
-不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更">
-<meta property="og:image" content="http://yoursite.com/quiver-image-url/B26C672A0FACFFD43C11627EC5A71001.png">
-<meta property="og:image" content="http://yoursite.com/quiver-image-url/A7129F3AF0A83B42D62FBD3F08D54B09.png">
-<meta property="og:updated_time" content="2017-03-28T05:47:05.000Z">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="不可变队列的实现">
-<meta name="twitter:description" content="命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。
-不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更">
-<meta name="twitter:image" content="http://yoursite.com/quiver-image-url/B26C672A0FACFFD43C11627EC5A71001.png">
-  
-    <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
-  
-  
-    <link rel="icon" href="/favicon.png">
-  
-  
-    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
-  
-  <link rel="stylesheet" href="/css/style.css">
-  
+<article>
+	
+		<h1>不可变队列的实现</h1>
+	
+	<div class="article__infos">
+		<span class="article__date">2017-03-27</span><br />
+		
+		
+			<span class="article__tags">
+			  	<a class="article__tag-link" href="/tags/Clojure/">Clojure</a>
+			</span>
+		
+	</div>
 
-</head>
+	
 
-<body>
-  <div id="container">
-    <div id="wrap">
-      <header id="header">
-  <div id="banner"></div>
-  <div id="header-outer" class="outer">
-    <div id="header-title" class="inner">
-      <h1 id="logo-wrap">
-        <a href="/" id="logo">Ylgrgyq Blog</a>
-      </h1>
-      
-    </div>
-    <div id="header-inner" class="inner">
-      <nav id="main-nav">
-        <a id="main-nav-toggle" class="nav-icon"></a>
-        
-          <a class="main-nav-link" href="/">Home</a>
-        
-          <a class="main-nav-link" href="/archives">Archives</a>
-        
-      </nav>
-      <nav id="sub-nav">
-        
-          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="Flux RSS"></a>
-        
-        <a id="nav-search-btn" class="nav-icon" title="Rechercher"></a>
-      </nav>
-      <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
-      </div>
-    </div>
-  </div>
-</header>
-      <div class="outer">
-        <section id="main"><article id="post-persistent-queue" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2017/03/27/persistent-queue/" class="article-date">
-  <time datetime="2017-03-27T05:30:52.000Z" itemprop="datePublished">2017-03-27</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 class="article-title" itemprop="name">
-      不可变队列的实现
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。</p>
+	
+		<p>命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。</p>
 <p>不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更新。在这种情况下该怎么实现 Queue 呢？</p>
 <h1 id="两个-Stack-来实现-Queue"><a href="#两个-Stack-来实现-Queue" class="headerlink" title="两个 Stack 来实现 Queue"></a>两个 Stack 来实现 Queue</h1><p>以前遇到过这么一个面试题：怎么用两个 stack 去实现一个 queue？当时在做这个题的时候并没有想太多，只是把它当做一个思考题来做，但这个问题实际是对怎么在函数式语言下实现不可变队列有帮助的。</p>
 <p>不可变队列实现的难点就是因为没有 Head、Tail 引用，用单个链表或数组在不考虑扩容的情况下，都是只能在队列的一端以 O(1) 的时间增加一个元素，但要从队列另一端取元素需要遍历整个队列导致时间复杂度变为 O(n)。这个时间复杂度并不符合我们的期待。而使用两个用链表实现的 Stack 去实现队列就能做到出入队平均时间复杂度都为 O(1)。注意是平均时间复杂度。</p>
@@ -122,121 +46,11 @@
 <p>不需要反转，也不需要连接 Front (因为每次 Rear 变成 Front 时 Front 都是空的)，所以 PersistentQueue 不会出现“颠簸”，出队和入队基本都是 O(1) 的时间。</p>
 <p>如此神奇的 PersistentVector 的实现可以看下<a href="http://hypirion.com/musings/understanding-persistent-vector-pt-1" target="_blank" rel="external">这篇文章</a>。</p>
 
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://yoursite.com/2017/03/27/persistent-queue/" data-id="cj0t5lfej0001hqwxuu9f65cy" class="article-share-link">Partager</a>
-      
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Clojure/">Clojure</a></li></ul>
+	
 
-    </footer>
-  </div>
-  
-    
-<nav id="article-nav">
-  
-  
-    <a href="/2016/07/17/found-a-bug-in-netty/" id="article-nav-older" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Ancien</strong>
-      <div class="article-nav-title">追踪 Netty 异常占用堆外内存的经验分享</div>
-    </a>
-  
-</nav>
+	
+		<span class="different-posts"><a href="/2017/03/27/persistent-queue/" onclick="window.history.go(-1); return false;">⬅️ Go back </a></span>
 
-  
+	
+
 </article>
-
-</section>
-        
-          <aside id="sidebar">
-  
-    
-
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Mot-clés</h3>
-    <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
-    </div>
-  </div>
-
-
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Nuage de mot-clés</h3>
-    <div class="widget tagcloud">
-      <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a>
-    </div>
-  </div>
-
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Archives</h3>
-    <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li></ul>
-    </div>
-  </div>
-
-
-  
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Articles récents</h3>
-    <div class="widget">
-      <ul>
-        
-          <li>
-            <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
-          </li>
-        
-          <li>
-            <a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
-          </li>
-        
-          <li>
-            <a href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a>
-          </li>
-        
-      </ul>
-    </div>
-  </div>
-
-  
-</aside>
-        
-      </div>
-      <footer id="footer">
-  
-  <div class="outer">
-    <div id="footer-info" class="inner">
-      &copy; 2017 ylgrgyq<br>
-      Propulsé by <a href="http://hexo.io/" target="_blank">Hexo</a>
-    </div>
-  </div>
-</footer>
-    </div>
-    <nav id="mobile-nav">
-  
-    <a href="/" class="mobile-nav-link">Home</a>
-  
-    <a href="/archives" class="mobile-nav-link">Archives</a>
-  
-</nav>
-    
-
-<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
-
-
-  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
-  <script src="/fancybox/jquery.fancybox.pack.js"></script>
-
-
-<script src="/js/script.js"></script>
-
-  </div>
-</body>
-</html>
