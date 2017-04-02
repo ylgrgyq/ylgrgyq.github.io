@@ -1,32 +1,108 @@
-<article>
-	
-		<h1>不可变队列的实现</h1>
-	
-	<div class="article__infos">
-		<span class="article__date">2017-03-27</span><br />
-		
-		
-			<span class="article__tags">
-			  	<a class="article__tag-link" href="/tags/Clojure/">Clojure</a>
-			</span>
-		
-	</div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>不可变队列的实现 | Ylgrgyq Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。
+不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更">
+<meta property="og:type" content="article">
+<meta property="og:title" content="不可变队列的实现">
+<meta property="og:url" content="http://yoursite.com/2017/03/27/persistent-queue/index.html">
+<meta property="og:site_name" content="Ylgrgyq Blog">
+<meta property="og:description" content="命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。
+不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更">
+<meta property="og:image" content="http://yoursite.com/2017/03/27/persistent-queue/double-list.png">
+<meta property="og:image" content="http://yoursite.com/2017/03/27/persistent-queue/m-double-list.png">
+<meta property="og:updated_time" content="2017-04-01T13:32:13.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="不可变队列的实现">
+<meta name="twitter:description" content="命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。
+不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更">
+<meta name="twitter:image" content="http://yoursite.com/2017/03/27/persistent-queue/double-list.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  
 
-	
+</head>
 
-	
-		<p>命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。</p>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Ylgrgyq Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS-каналы"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Поиск"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-persistent-queue" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/03/27/persistent-queue/" class="article-date">
+  <time datetime="2017-03-27T05:30:52.000Z" itemprop="datePublished">2017-03-27</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      不可变队列的实现
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>命令式语言中一般实现 Queue 就是用一个链表或数组做存储，之后有两个引用 Head 和 Tail 分别指向队首和队尾。一般为了方便判断队列是否为空还会引入一个哑元，Head 引用 不直接指向队列内的第一个元素而是指向这个哑元。具体细节可以参看各种数据结构相关的介绍。</p>
 <p>不过在函数式语言下，各种数据结构都是不可变的，不会有个 Head、Tail 引用去指向队首队尾，并在每次有元素入队出队的时候被更新。在这种情况下该怎么实现 Queue 呢？</p>
 <h1 id="两个-Stack-来实现-Queue"><a href="#两个-Stack-来实现-Queue" class="headerlink" title="两个 Stack 来实现 Queue"></a>两个 Stack 来实现 Queue</h1><p>以前遇到过这么一个面试题：怎么用两个 stack 去实现一个 queue？当时在做这个题的时候并没有想太多，只是把它当做一个思考题来做，但这个问题实际是对怎么在函数式语言下实现不可变队列有帮助的。</p>
 <p>不可变队列实现的难点就是因为没有 Head、Tail 引用，用单个链表或数组在不考虑扩容的情况下，都是只能在队列的一端以 O(1) 的时间增加一个元素，但要从队列另一端取元素需要遍历整个队列导致时间复杂度变为 O(n)。这个时间复杂度并不符合我们的期待。而使用两个用链表实现的 Stack 去实现队列就能做到出入队平均时间复杂度都为 O(1)。注意是平均时间复杂度。</p>
-<p><img src="quiver-image-url/B26C672A0FACFFD43C11627EC5A71001.png" alt="屏幕快照 2017-03-26 下午4.41.09.png"></p>
+<img src="/2017/03/27/persistent-queue/double-list.png" alt="两个 Stack 实现 Queue" title="两个 Stack 实现 Queue">
 <p>如上图所示，用两个链表分别称为 Front 和 Rear。每次入队时，都将新元素添加到 Rear 链表中，这样时间为 O(1)。每次出队时，都从 Front 队列中取元素出队。如果 Front 非空，那么出队的时间复杂度为 O(1)，如果 Front 为空，则将 Rear 链表反转一下作为新的 Front 队列。之后再将新 Front 队列的队首元素出队，这个过程的时间复杂度为 O(n)。假设 Front 为空时 Rear 链表元素数量为 m，那么将 Rear 反转的时间是 O(m) 但之后 m 个元素出队时时间都是 O(1)，于是能将反转 Rear 队列的时间平摊给之后 m 次出队时间，所以平均下来出队操作的时间还是 O(1)。</p>
 <p>这个过程用 Clojure 实现如下：<br><figure class="highlight clojure"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div></pre></td><td class="code"><pre><div class="line">(<span class="name"><span class="builtin-name">defrecord</span></span> Queue [front rear cnt])</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> make-queue</div><div class="line">  ([] (<span class="name">Queue.</span> '() '() <span class="number">0</span>))</div><div class="line">  ([front rear cnt]</div><div class="line">    (<span class="name">Queue.</span> front rear cnt)))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn-</span></span> maintain [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">if</span></span> (<span class="name"><span class="builtin-name">and</span></span> (<span class="name"><span class="builtin-name">empty?</span></span> (<span class="name">.-front</span> queue)) (<span class="name">not-empty</span> (<span class="name">.-rear</span> queue)))</div><div class="line">    (<span class="name">make-queue</span> (<span class="name"><span class="builtin-name">reverse</span></span> (<span class="name">.-rear</span> queue)) '() (<span class="name">.-cnt</span> queue))</div><div class="line">    queue))</div><div class="line"></div><div class="line"><span class="comment">;; maintain after every enqueue to insure front list </span></div><div class="line"><span class="comment">;; must have at least one element when queue is not empty</span></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> enqueue [queue x]</div><div class="line">  (<span class="name">maintain</span> (<span class="name">make-queue</span> (<span class="name">.-front</span> queue) (<span class="name"><span class="builtin-name">conj</span></span> (<span class="name">.-rear</span> queue) x) (<span class="name"><span class="builtin-name">inc</span></span> (<span class="name">.-cnt</span> queue)))))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> empty-queue? [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">zero?</span></span> (<span class="name">.-cnt</span> queue)))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> peek [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">when-not</span></span> (<span class="name">empty-queue?</span> queue)</div><div class="line">    (<span class="name"><span class="builtin-name">first</span></span> (<span class="name">.-front</span> queue))))</div><div class="line"></div><div class="line">(<span class="name"><span class="builtin-name">defn</span></span> dequeue [queue]</div><div class="line">  (<span class="name"><span class="builtin-name">if-not</span></span> (<span class="name">empty-queue?</span> queue)</div><div class="line">    (<span class="name">maintain</span> (<span class="name">make-queue</span> (<span class="name"><span class="builtin-name">rest</span></span> (<span class="name">.-front</span> queue)) (<span class="name">.-rear</span> queue) (<span class="name"><span class="builtin-name">dec</span></span> (<span class="name">.-cnt</span> queue))))</div><div class="line">    queue))</div><div class="line"></div></pre></td></tr></table></figure></p>
 <p>maintain 函数的作用主要是为了让队列非空时，Front 链表至少有一个元素存在。不然队列的 peek 操作在 Front 为空时需要遍历 Rear 链表才能找到下一个出队元素，并且由于 peek 的返回值只有下一个出队的元素，我们不能将新的队列结构返回(即反转 Rear 链表并将其作为 Front)，于是在连续执行 peek 操作时，每次 peek 都要遍历整个 Rear 表。这个是不合理的，所以我们需要保证队列非空时，Front 链表至少有一个元素存在，以供 peek 使用。</p>
 <h1 id="Lazy-来实现真正-O-1-的队列"><a href="#Lazy-来实现真正-O-1-的队列" class="headerlink" title="Lazy 来实现真正 O(1) 的队列"></a>Lazy 来实现真正 O(1) 的队列</h1><p>上面实现的缺陷是显而易见的，虽然平均时间是 O(1) 但毕竟会存在某次出队的耗时为 O(n)，导致使用时每次出队操作时间有颠簸。而如果我们能借助函数式编程语言普遍支持的 Lazy 特性去实现队列，就能避免这种颠簸。</p>
 <p>还是延续上面双链表的实现，最耗时的操作是反转 Rear 链表，每次执行这个操作的时间点是在 Front 队列为空的时候。如果我们不想只在这一个时间点进行 Rear 反转，想将反转过程平摊到每次出入队操作中，那么我们就需要在 Front 还未变为空的时候就执行 Rear 反转，并且每次都执行一小步，比如反转一个元素，从而保证每一个出入队操作的时间都是 O(1)。</p>
 <p>但是 Front 链表非空时我们就反转 Rear 的话，反转完 Rear 时如果队列没有元素出队，那么 Front 链表是没有变动过的，那不可能像之前一样将反转后的 Rear 链表直接作为 Front 来使用，而是还需要将 Front 和反转后的 Rear 连接起来。Front 是链表，头部是队首，如下图所示，如果直接拼接的话还是要遍历 Front 链表找到 Front 链表的尾巴，再将尾巴指向反转后的 Rear 链表。</p>
-<p><img src="quiver-image-url/A7129F3AF0A83B42D62FBD3F08D54B09.png" alt="屏幕快照 2017-03-26 下午6.00.31.png"></p>
+<img src="/2017/03/27/persistent-queue/m-double-list.png" alt="Front 和 Rear 的拼接" title="Front 和 Rear 的拼接">
 <p>如果 Rear 长度是 n，Front 长度是 m，那么反转 Rear 的操作要 n 步，连接 Front 的操作要 m 步。以连续入队操作来看，也就是说如果每次入队都执行一个 Rear 反转或者连接 Front 工作的话，连接完毕后 Rear 又会有 m + n 个元素了，我们为了每次入队都只执行一次额外操作，所以每一个入队操作都不能浪费，也就是说连接完毕之后再入队一个元素时我们又要开始下一轮反转 Rear 和连接 Front 的工作，此时 Front 长度为 m + n，Rear 长度为 m + n + 1，从而得到 Rear 反转和连接 Front 的工作每次是 Rear 比 Front 多一个元素的时候开始。</p>
 <p>我们将反转 Rear 和连接 Front 两个工作称为 rotate，并且约定 rotate 执行时间为 Rear 比 Front 多一个元素时。我们得到 rotate 函数如下，注意 acc 表示的是反转 Rear 的结果，即 rotate 的反转 Rear 和连接 Front 操作最终都是构建在 acc 这个 List 上。</p>
 <figure class="highlight"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line">// rotate 执行时必须保证 rear 比 front 多一个元素</div><div class="line">(defn rotate [front rear acc]</div><div class="line">  (lazy-seq</div><div class="line">    (if (empty? front)</div><div class="line">      // 如果 front 为空，那么 rear 只有一个元素，所以直接放入 acc</div><div class="line">      (cons (first rear) acc)</div><div class="line">      // 当 front 非空，下面解释</div><div class="line">      (cons (first front)</div><div class="line">            (rotate (rest front) (rest rear) (cons (first rear) acc))))))</div></pre></td></tr></table></figure>
@@ -46,11 +122,134 @@
 <p>不需要反转，也不需要连接 Front (因为每次 Rear 变成 Front 时 Front 都是空的)，所以 PersistentQueue 不会出现“颠簸”，出队和入队基本都是 O(1) 的时间。</p>
 <p>如此神奇的 PersistentVector 的实现可以看下<a href="http://hypirion.com/musings/understanding-persistent-vector-pt-1" target="_blank" rel="external">这篇文章</a>。</p>
 
-	
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2017/03/27/persistent-queue/" data-id="cj10n8hgg0000siwxzubhysz7" class="article-share-link">Поделиться</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Clojure/">Clojure</a></li></ul>
 
-	
-		<span class="different-posts"><a href="/2017/03/27/persistent-queue/" onclick="window.history.go(-1); return false;">⬅️ Go back </a></span>
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2017/04/01/queue/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Следующий</strong>
+      <div class="article-nav-title">
+        
+          queue
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2016/07/17/found-a-bug-in-netty/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Предыдущий</strong>
+      <div class="article-nav-title">追踪 Netty 异常占用堆外内存的经验分享</div>
+    </a>
+  
+</nav>
 
-	
-
+  
 </article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Метки</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Облако меток</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Архив</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Недавние записи</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2017/04/01/queue/">queue</a>
+          </li>
+        
+          <li>
+            <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
+          </li>
+        
+          <li>
+            <a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
+          </li>
+        
+          <li>
+            <a href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ylgrgyq<br>
+      Создано с помощью <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+  </div>
+</body>
+</html>
