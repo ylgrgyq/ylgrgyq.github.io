@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>普通队列改造为并发队列 | Ylgrgyq Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="起初是看这篇文章写的挺好的，介绍了无锁队列的实现。按照它的说法我们来实现一下:
+1234567891011121314151617181920212223242526272829303132333435363738394041public class ConcurrentListQueue&amp;lt;T&amp;gt; &amp;#123;  private Node&amp;lt;T&amp;gt; head, tail;  pr">
+<meta property="og:type" content="article">
+<meta property="og:title" content="普通队列改造为并发队列">
+<meta property="og:url" content="http://yoursite.com/2017/04/01/basic-concurrent-queue/index.html">
+<meta property="og:site_name" content="Ylgrgyq Blog">
+<meta property="og:description" content="起初是看这篇文章写的挺好的，介绍了无锁队列的实现。按照它的说法我们来实现一下:
+1234567891011121314151617181920212223242526272829303132333435363738394041public class ConcurrentListQueue&amp;lt;T&amp;gt; &amp;#123;  private Node&amp;lt;T&amp;gt; head, tail;  pr">
+<meta property="og:updated_time" content="2017-04-04T11:28:06.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="普通队列改造为并发队列">
+<meta name="twitter:description" content="起初是看这篇文章写的挺好的，介绍了无锁队列的实现。按照它的说法我们来实现一下:
+1234567891011121314151617181920212223242526272829303132333435363738394041public class ConcurrentListQueue&amp;lt;T&amp;gt; &amp;#123;  private Node&amp;lt;T&amp;gt; head, tail;  pr">
+  
+    <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  
+
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Ylgrgyq Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Søk"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-basic-concurrent-queue" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/04/01/basic-concurrent-queue/" class="article-date">
+  <time datetime="2017-04-01T13:21:43.000Z" itemprop="datePublished">2017-04-01</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      普通队列改造为并发队列
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>起初是看<a href="http://www.drdobbs.com/parallel/writing-a-generalized-concurrent-queue/211601363" target="_blank" rel="external">这篇文章</a>写的挺好的，介绍了无锁队列的实现。按照它的说法我们来实现一下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div></pre></td><td class="code"><pre><div class="line">public class ConcurrentListQueue&lt;T&gt; &#123;</div><div class="line">  private Node&lt;T&gt; head, tail;</div><div class="line">  private AtomicInteger producerLock, consumerLock;</div><div class="line">  private static class Node&lt;T&gt; &#123;</div><div class="line">      private T data;</div><div class="line">      private Node&lt;T&gt; next;</div><div class="line"></div><div class="line">      private Node(T d) &#123;</div><div class="line">          this.data = d;</div><div class="line">      &#125;</div><div class="line">  &#125;</div><div class="line"></div><div class="line">  public void add(T data) &#123;</div><div class="line">      Node&lt;T&gt; n = new Node&lt;&gt;(data);</div><div class="line"></div><div class="line">      while (!producerLock.compareAndSet(0, 1)) &#123;</div><div class="line">      &#125;</div><div class="line">    </div><div class="line">      tail.next = n;</div><div class="line">      tail = n;</div><div class="line">      producerLock.set(0);</div><div class="line">  &#125;</div><div class="line">  </div><div class="line">  public T poll() &#123;</div><div class="line">      T d = null;</div><div class="line">      while (!consumerLock.compareAndSet(0, 1)) &#123;</div><div class="line">      &#125;</div><div class="line">    </div><div class="line">      Node&lt;T&gt; h = head;</div><div class="line">      Node&lt;T&gt; next = h.next;</div><div class="line">      if (next != null) &#123;</div><div class="line">          d = next.data;</div><div class="line">          next.data = null;</div><div class="line">          head = next;</div><div class="line">          h.next = null;</div><div class="line">      &#125;</div><div class="line">    </div><div class="line">      consumerLock.set(0);</div><div class="line">      return d;</div><div class="line">  &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>这里需要注意 Producer 只能访问 tail，而 Consumer 只能访问 head，不然无法做到 Producer 和 Consumer 相互不竞争。很多队列的实现会使用一个固定的哑元做 Head，这个哑元从始至终是不变的，每次出队只是修改哑元的 next 引用，例如单线程版的 poll 可以实现成：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">public void poll() &#123;</div><div class="line">    if (head != tail) &#123;</div><div class="line">        Node&lt;T&gt; next = head.next;</div><div class="line">        head.next = next.next;</div><div class="line">        if (next == tail) &#123;</div><div class="line">            tail = head;</div><div class="line">        &#125;</div><div class="line">        next.data = null;</div><div class="line">        next.next = null;</div><div class="line">    &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>这种实现下通过加锁改成并发队列，因为当出队后队列为空时由于需要调整 tail 引用指向 Head 哑元，所以在 poll 的时候也访问了 tail，这么一来按前述 Producer 和 Consumer 分别加锁的方式就不成立了，所以需要改成每次出队后，修改 Head 哑元变成刚出队的这个 Node。并且要将 Node 的 data 引用清空，帮助出队的数据 GC。</p>
+<h1 id="不那么容易观察到的-False-Sharing"><a href="#不那么容易观察到的-False-Sharing" class="headerlink" title="不那么容易观察到的 False Sharing"></a>不那么容易观察到的 False Sharing</h1><p><a href="http://www.drdobbs.com/parallel/writing-a-generalized-concurrent-queue/211601363" target="_blank" rel="external">这个文章</a>中还提到一个问题就是 <a href="https://en.wikipedia.org/wiki/False_sharing" target="_blank" rel="external">False Sharing</a>，关于这个问题还有好多地方在做解释：比如<a href="https://dzone.com/articles/false-sharing-cache-coherence-and-the-contended-an" target="_blank" rel="external">这个</a>、<a href="https://mechanical-sympathy.blogspot.com/2011/07/false-sharing.html" target="_blank" rel="external">这个</a></p>
+<p>作者是通过添加一堆无用的 padding 字段来解决 False Sharing 的，但是在上面 Java 版本实现中该怎么解决 False Sharing 问题呢？</p>
+<p>直接在 producerLock 和 consumerLock 前后添加 padding 是没用的，有好两个原因。一是 JVM 会对对象内的 Field 做重新排序和内存对齐，producerLock 和 consumerLock 是引用，他们两之间一定不会放入 long 型的数据（引用类型放在一起，long 类型也会放在一起，但<a href="http://psy-lob-saw.blogspot.com/2013/05/know-thy-java-object-memory-layout.html" target="_blank" rel="external">两种类型不会穿插着放</a>），他们两在一起声明，在内存中很有可能还是放在一起的；二是因为这两个 lock 都是引用，从始至终都不会被并发的修改，并发修改的是他们指向的 AtomicInteger 对象内的 value 字段，所以这两个引用本身就不会产生 False Sharing 问题，为它们增加 padding 完全没有效果，还会导致对象体积变大以及 producerLock 和 consumerLock 引用不能同时放入一个 Cache Line 中导致性能反而下降(可以试一下，加了 @Contended 之后性能反而会下降。因为当线程数超过机器 CPU 核数时，一个核很可能既要执行 producer 逻辑又要执行 consumer 逻辑，只是不是同时执行。如果 producerLock 和 consumerLock 不在一个 cache line 中，那么 CPU 比如从 consumer task 切换到 producer task 的时候就不能沿用之前的 cache line 需要读取主存或下一级 Cache，所以性能就会受到影响)。</p>
+<p>AtomicInteger 是 JDK 的库，我们无法修改，不可能给它增加 padding，但<a href="https://mechanical-sympathy.blogspot.com/2011/08/false-sharing-java-7.html" target="_blank" rel="external">我们能够继承它，从而改变其对象的内存布局</a>。AtomicInteger 对象布局如下：</p>
+<table>
+<thead>
+<tr>
+<th>OFFSET</th>
+<th>SIZE</th>
+<th>TYPE</th>
+<th>DESCRIPTION</th>
+<th>VALUE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>      0</td>
+<td>4</td>
+<td></td>
+<td>(object header)</td>
+<td>01 00 00 00 (00000001 00000000 00000000 00000000) (1)</td>
+</tr>
+<tr>
+<td>      4</td>
+<td>4</td>
+<td></td>
+<td>(object header)</td>
+<td>00 00 00 00 (00000000 00000000 00000000 00000000) (0)</td>
+</tr>
+<tr>
+<td>      8</td>
+<td>4</td>
+<td></td>
+<td>(object header)</td>
+<td>f2 35 00 f8 (11110010 00110101 00000000 11111000) (-134203918)</td>
+</tr>
+<tr>
+<td>     12</td>
+<td>4</td>
+<td>int</td>
+<td>AtomicInteger.value</td>
+<td>0 </td>
+</tr>
+</tbody>
+</table>
+<p>我们继承 AtomicInteger 并添加 padding：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">public static class PaddedAtomicInteger extends AtomicInteger&#123;</div><div class="line">    // 省略构造函数</div><div class="line">    public volatile long p1, p2, p3, p4, p5, p6 = 7L;</div><div class="line">&#125;</div></pre></td></tr></table></figure></p>
+<p>其内存布局如下：</p>
+<table>
+<thead>
+<tr>
+<th>OFFSET</th>
+<th>SIZE</th>
+<th>TYPE</th>
+<th>DESCRIPTION</th>
+<th>VALUE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>      0</td>
+<td>4</td>
+<td></td>
+<td>(object header)</td>
+<td>01 00 00 00 (00000001 00000000 00000000 00000000) (1)</td>
+</tr>
+<tr>
+<td>      4</td>
+<td>4</td>
+<td></td>
+<td>(object header)</td>
+<td>00 00 00 00 (00000000 00000000 00000000 00000000) (0)</td>
+</tr>
+<tr>
+<td>      8</td>
+<td>4</td>
+<td></td>
+<td>(object header)</td>
+<td>05 07 02 f8 (00000101 00000111 00000010 11111000) (-134084859)</td>
+</tr>
+<tr>
+<td>     12</td>
+<td>4</td>
+<td>int</td>
+<td>AtomicInteger.value</td>
+<td>0</td>
+</tr>
+<tr>
+<td>     16</td>
+<td>8</td>
+<td>long</td>
+<td>PaddedAtomicInteger.p1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>     24</td>
+<td>8</td>
+<td>long</td>
+<td>PaddedAtomicInteger.p2</td>
+<td>0</td>
+</tr>
+<tr>
+<td>     32</td>
+<td>8</td>
+<td>long</td>
+<td>PaddedAtomicInteger.p3</td>
+<td>0</td>
+</tr>
+<tr>
+<td>     40</td>
+<td>8</td>
+<td>long</td>
+<td>PaddedAtomicInteger.p4</td>
+<td>0</td>
+</tr>
+<tr>
+<td>     48</td>
+<td>8</td>
+<td>long</td>
+<td>PaddedAtomicInteger.p5</td>
+<td>0</td>
+</tr>
+<tr>
+<td>     56</td>
+<td>8</td>
+<td>long</td>
+<td>PaddedAtomicInteger.p6</td>
+<td>7</td>
+</tr>
+</tbody>
+</table>
+<p>由于 PaddedAtomicInteger 是 AtomicInteger 的子类，其对象内存布局是在 AtomicInteger 的基础上进行的，父类对象的 Field 一定在子类对象之前，所以不会受到子类对象内存布局重排序的影响。</p>
+<p>使用 PaddedAtomicInteger 之后平均性能确实比使用 AtomicInteger 好一些，但不是特别明显，平均下来只快了大概 20% 左右。但有意思的是他俩最快时间基本相同，最慢时间 AtomicInteger 要高的多，并且使用 AtomicInteger 的波动更大，慢的时候是快的时候的两倍，而 PaddedAtomicInteger 波动较小。猜想原因是 consumerLock 和 producerLock 指向的对象都在 Heap 上，我测试的时候每一轮测试都会重新构造队列对象，从而重新构造 consumerLock 和 producerLock，这两个对象虽然是连续分配的但是否一定相邻，能刚好放入一个 Cache Line 并不能说的清楚，Java 也缺乏工具去查看一个对象的内存地址。如果他俩没有分配在一个 Cache Line 上，那么使用 AtomicIntger 和使用 PaddedAtomicInteger 效果一样，所以性能结果也差不多，但是当他俩刚好分配在同一个 Cache Line 上时，AtomicInteger 性能要比 PaddedAtomicInteger 性能差一倍。巧的是我使用<a href="https://mechanical-sympathy.blogspot.com/2011/08/false-sharing-java-7.html" target="_blank" rel="external">这篇文章</a>给的例子在相同机器做测试，使用 PaddedAtomicInteger 的性能也是比使用 AtomicInteger 好一倍。</p>
+<p>不过从平均性能上看这两者差别较小，并且在正常使用中由于 GC 的影响也许会让 PaddedAtomicInteger 的优势更不容易发现。</p>
+<h1 id="非常容易观察到的-False-Sharing"><a href="#非常容易观察到的-False-Sharing" class="headerlink" title="非常容易观察到的 False Sharing"></a>非常容易观察到的 False Sharing</h1><p>从上面叙述也能看出来，上面 False Sharing 问题不明显的原因就是 consumerLock 和 producerLock 都是引用类型，引用的对象在 Heap，所以是否会出现 False Sharing 得看对象是否刚好分配在同一个 Cache Line 上。如果我们想进一步观察到 False Sharing，我们可以将引用对象改成基本类型，使用 sun.misc.Unsafe 的 CAS 操作来实现 Atomic 库的 CAS 操作。</p>
+<p>Unsafe 的获取能参考<a href="https://github.com/netty/netty/blob/4.1/common/src/main/java/io/netty/util/internal/PlatformDependent0.java" target="_blank" rel="external">Netty 上的代码</a>。在有了 Unsafe 之后我们能够重新声明 consumerLock 和 producerLock 将其改成 volatile 的基本类型：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div></pre></td><td class="code"><pre><div class="line">private static final sun.misc.Unsafe UNSAFE;</div><div class="line">private static final long producerLockOffset;</div><div class="line">private static final long consumerLockOffset;</div><div class="line">static &#123;</div><div class="line">  UNSAFE = getUnsafe();</div><div class="line">  try &#123;</div><div class="line">      producerLockOffset = UNSAFE.objectFieldOffset</div><div class="line">              (ConcurrentListQueue.class.getDeclaredField(&quot;producerLock&quot;));</div><div class="line">      consumerLockOffset = UNSAFE.objectFieldOffset</div><div class="line">              (ConcurrentListQueue.class.getDeclaredField(&quot;consumerLock&quot;));</div><div class="line">  &#125; catch (Exception ex) &#123;</div><div class="line">      throw new Error(ex);</div><div class="line">  &#125;</div><div class="line">&#125;</div><div class="line">private volatile int producerLock;</div><div class="line">private volatile int consumerLock;</div></pre></td></tr></table></figure>
+<p>自旋锁上锁要稍微修改一下，例如 Producer 的锁加锁逻辑改为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">while (!UNSAFE.compareAndSwapInt(this, producerLockOffset, 0, 1)) &#123;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>解锁时候直接设置 producerLock 为 0 即可。</p>
+<p>在上述实现下，性能非常差，比使用 PaddedAtomicInteger 时慢不止一倍。基本能确认是由 False Sharing 引起的。Java 8 之后不需要再通过 padding 的方式解决 False Sharing 问题，而是通过 <a href="https://blogs.oracle.com/dave/entry/java_contented_annotation_to_help" target="_blank" rel="external">@Contended 注解</a>解决，但该注解目前还是默认不启用的，需要主动增加配置 -XX:-RestrictContended 才会产生效果。给 producerLock 和 consumerLock 增加 @Contended 注释之后，队列性能就变得跟使用 PaddedAtomicInteger 差不多了。</p>
+<h1 id="JOL-的使用"><a href="#JOL-的使用" class="headerlink" title="JOL 的使用"></a>JOL 的使用</h1><p>全名 <a href="http://openjdk.java.net/projects/code-tools/jol/" target="_blank" rel="external">Java Object Layout</a> 探索对象内存布局时非常有用。下载下来 Jar 包后，比如要看自己的某个类对象的布局：<br>java -XX:-RestrictContended -jar jol-cli-0.8-full.jar internals my.ConcurrentListQueue -cp ~/Projects/mine/my/target/classes</p>
+<p>如果是看内部类对象的布局，比如看 ConcurrentListQueue 下 Node 类对象的布局因为是命令行上使用，需要对 $ 转义：<br>java -XX:-RestrictContended -jar jol-cli-0.8-full.jar internals my.ConcurrentListQueue\$Node -cp ~/Projects/mine/my/target/classes</p>
+<p>当然它不止是用来看内存布局奥，还有很多别的功能，非常推荐。</p>
+<p>所有参考都在文章链接中，不一一列出了，感谢前辈的分享。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2017/04/01/basic-concurrent-queue/" data-id="cj13goq0l0000iiwx3ie73dnf" class="article-share-link">Share</a>
+      
+      
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2017/03/27/persistent-queue/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">不可变队列的实现</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Algorithm/" style="font-size: 10px;">Algorithm</a> <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Arkiv</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Siste innlegg</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2017/04/01/basic-concurrent-queue/">普通队列改造为并发队列</a>
+          </li>
+        
+          <li>
+            <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
+          </li>
+        
+          <li>
+            <a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
+          </li>
+        
+          <li>
+            <a href="/2016/07/03/garbage-first-collector-understanding/">Garbage First Collector 理解</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ylgrgyq<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+  </div>
+</body>
+</html>
