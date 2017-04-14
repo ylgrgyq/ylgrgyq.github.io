@@ -48,9 +48,9 @@
       </nav>
       <nav id="sub-nav">
         
-          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="Flux RSS"></a>
         
-        <a id="nav-search-btn" class="nav-icon" title="Zoeken"></a>
+        <a id="nav-search-btn" class="nav-icon" title="Rechercher"></a>
       </nav>
       <div id="search-form-wrap">
         <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
@@ -60,6 +60,117 @@
 </header>
       <div class="outer">
         <section id="main">
+  
+    <article id="post-tls-sni" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/04/14/tls-sni/" class="article-date">
+  <time datetime="2017-04-14T01:28:46.000Z" itemprop="datePublished">2017-04-14</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2017/04/14/tls-sni/">一次 TLS SNI 问题</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="一个遇到的问题"><a href="#一个遇到的问题" class="headerlink" title="一个遇到的问题"></a>一个遇到的问题</h1><p>LeanCloud 的实时通信服务能实现类似客服机器人的功能，用户能自己提供一个 Web Hook 地址，有消息发给机器人的时候实时通信服务会将消息发到这个 Web Hook 上，用户从 Web Hook 收到消息之后能对消息进行解析和处理，构造出客服机器人的回答，再通过 REST API 发还给用户。从而用户能实现客服机器人自动应答功能。</p>
+<p>前些天，有个用户反馈说 Web Hook 失效了，一直没有消息发过去。查看之下发现报类似这个样子的错误：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">javax.net.ssl.SSLException: hostname in certificate didn&apos;t match: &lt;expectedhost&gt; != &lt;defaulthost&gt;</div><div class="line">at org.apache.http.conn.ssl.AbstractVerifier.verify(AbstractVerifier.java:220)</div></pre></td></tr></table></figure>
+<p>看上去就是用户的 SSL 证书限定的 Host Name 和用户填的 Web Hook 域名不符，导致 SSL 握手的时候我们这边对证书校验失败。</p>
+<p>于是我去检查用户证书：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">openssl s_client -connect target.host.name:443</div></pre></td></tr></table></figure>
+<p>执行下来显示:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div></pre></td><td class="code"><pre><div class="line">CONNECTED(00000003)</div><div class="line">depth=2 C = US, O = &quot;VeriSign, Inc.&quot;, OU = VeriSign Trust Network, OU = &quot;(c) 2006 VeriSign, Inc. - For authorized use only&quot;, CN = VeriSign Class 3 Public Primary Certification Authority - G5</div><div class="line">verify return:1</div><div class="line">depth=1 C = US, O = Symantec Corporation, OU = Symantec Trust Network, CN = Symantec Class 3 Secure Server CA - G4</div><div class="line">verify return:1</div><div class="line">depth=0 C = CN, ST = guangdong, L = shenzhen, O = Shenzhen Tencent Computer Systems Company Limited, OU = R&amp;D, CN = *.cdn.myqcloud.com</div><div class="line">verify return:1</div><div class="line">---</div><div class="line">.......</div></pre></td></tr></table></figure>
+<p>看到这个证书是颁发给一个叫做 cdn.myqcloud.com 的，而不是用户的域名。从这个域名中能看出一个是证书属于腾讯云，另一个就是这是 CDN 的证书。说明这个用户将 CDN 托管给了腾讯云。此时开始怀疑是因为我们在发请求调用用户 Web Hook 的时候 SSL 握手没有带着 <a href="https://en.wikipedia.org/wiki/Server_Name_Indication" target="_blank" rel="external">SNI</a>。于是执行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">openssl s_client -connect target.host.name:443 -showcerts -servername target.host.name</div></pre></td></tr></table></figure>
+<p>此时看到了用户真正的证书:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line">CONNECTED(00000003)</div><div class="line">depth=2 O = Digital Signature Trust Co., CN = DST Root CA X3</div><div class="line">verify return:1</div><div class="line">depth=1 C = US, O = Let&apos;s Encrypt, CN = Let&apos;s Encrypt Authority X3</div><div class="line">verify return:1</div><div class="line">depth=0 CN = target.host.name</div><div class="line">verify return:1</div><div class="line">........</div></pre></td></tr></table></figure>
+<p>从而确认是我们在调用用户 Web Hook 时候 SSL 握手一定是没有带着 SNI 导致握手时拿到的不是用户真实的证书，拿的是用户 CDN 的证书，最终导致握手失败。</p>
+<h1 id="证实服务确实是不支持-SNI"><a href="#证实服务确实是不支持-SNI" class="headerlink" title="证实服务确实是不支持 SNI"></a>证实服务确实是不支持 SNI</h1><p>首先需要说的是，<a href="http://docs.oracle.com/javase/7/docs/technotes/guides/security/enhancements-7.html" target="_blank" rel="external">从 JDK 是从 1.7 开始才真正支持 SNI</a>，也就是说还在使用 1.6 版本 JDK 的话是无论如何都无法使用 SNI 的。</p>
+<p>而 <a href="https://hc.apache.org/httpcomponents-client-ga/" target="_blank" rel="external">HttpClient</a> 是从 4.3.2 开始支持 SNI 的。即使你使用的是 JDK 1.7 或更新版本的 JDK，但还是使用 4.3.2 以前的 HttpClient 的话，也是无法使用 SNI 的。</p>
+<p>我们调用 Web Hook 的服务使用的是 clj-http 0.7.8，这个版本的 clj-http 刚好使用的是 4.3.1 的 HttpClient，所以才有了上面说的调用 Web Hook 进行 SSL 握手时没有带着 SNI 导致拿到错误证书。</p>
+<p>为了证实 clj-http 0.7.8 在请求 https 服务时，SSL 握手没有带着 SNI ，首先需要添加 JVM 参数:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">-Djavax.net.debug=all</div></pre></td></tr></table></figure>
+<p>这个参数在调试 SSL 握手相关问题时非常有用，能把完整的握手过程，使用的证书等都打印出来。测试就是随意发了个 POST 请求到 https:leancloud.cn 在打印出来的 ClientHello 阶段有如下信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div></pre></td><td class="code"><pre><div class="line">*** ClientHello, TLSv1.2</div><div class="line">RandomCookie:  GMT: 1475193456 bytes = &#123; 187, 13, 85, ...... &#125;</div><div class="line">Session ID:  &#123;&#125;</div><div class="line">Cipher Suites: [TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256, .......]</div><div class="line">Compression Methods:  &#123; 0 &#125;</div><div class="line">Extension elliptic_curves, curve names: &#123;secp256r1, .......&#125;</div><div class="line">Extension ec_point_formats, formats: [uncompressed]</div><div class="line">Extension signature_algorithms, signature_algorithms: SHA512withECDSA, ......</div></pre></td></tr></table></figure>
+<p>上面内容通过 tcpdump 抓包也能得到，但如果能增加 -Djavax.net.debug=all 这个配置的话还是打印出来会更方便一点。主要是看到上面 Extension 只有三行内容，少了：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">Extension server_name, server_name: [type=host_name (0), value=leancloud.cn]</div></pre></td></tr></table></figure>
+<p>如果支持 SNI 的话是一定会打印上面这个 Extension 信息的。从而证实 clj-http 0.7.8 确实是不支持 SNI 的。</p>
+<p>那是不是将 clj-http 升级到最新版，HttpClient 也使用最新版就可以了呢？</p>
+<p>还不行。目前 HttpClient 对 SNI 的支持并不是向前兼容的，而是提供了一套新的 API 让用户使用。想要使用 SNI 就必须调用新的 HttpClient 的 API。clj-http 从 0.7.8 直到最新的发布版 2.3.0 都还在使用 HttpClient 老版本的 API，只有更新一些的还在开发中的 3.4.1 才真正切换到了新的 API。</p>
+<p>这里就有疑问了，为什么 JDK 支持了 SNI，HttpClient 还得靠增加一套 API 来支持 SNI 呢？</p>
+<h1 id="JDK-对-SNI-的支持"><a href="#JDK-对-SNI-的支持" class="headerlink" title="JDK 对 SNI 的支持"></a>JDK 对 SNI 的支持</h1><p>为了解开疑问，先来看看 JDK 是怎么支持 SNI 的。JDK 要创建 SSL 的 Socket 需要使用 javax.net.ssl.SSLSocketFactory。SSLSocketFactory 提供了几种构造 Socket 的方式：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line"><span class="function">Socket <span class="title">createSocket</span><span class="params">()</span></span></div><div class="line">Socket <span class="title">createSocket</span><span class="params">(String host, <span class="keyword">int</span> port)</span></div><div class="line">Socket <span class="title">createSocket</span><span class="params">(String host, <span class="keyword">int</span> port, InetAddress localhost, <span class="keyword">int</span> localPort)</span> <span class="keyword">throws</span> IOException, UnknownHostException;</div><div class="line"><span class="function">Socket <span class="title">createSocket</span><span class="params">(InetAddress address, <span class="keyword">int</span> port)</span></span></div><div class="line">Socket <span class="title">createSocket</span><span class="params">(InetAddress address, <span class="keyword">int</span> port, InetAddress remoteHost, <span class="keyword">int</span> remotePort)</span></div><div class="line">Socket <span class="title">createSocket</span><span class="params">(Socket socket, String host, <span class="keyword">int</span> port, <span class="keyword">boolean</span> autoClose)</span></div></pre></td></tr></table></figure>
+<p>需要注意：</p>
+<ol>
+<li>有 host 参数的都会在创建 Socket 的时候自动连接 host</li>
+<li>只有直接以 String 传递 host 的方式才会在握手中使用 SNI，以 InetAddress 传递 host 的方式握手时都不会带着 SNI</li>
+<li>第 6 行的 createSocket 很特殊，是传入一个 Socket (已连接或未连接)，然后建立一个新的 Socket layered over 原来的 Socket，如果原来的 Socket 没有建立连接，则在创建后会立即连接 host</li>
+</ol>
+<p>第二条很关键，但在 JDK 文档上竟然完全没有说明。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div></pre></td><td class="code"><pre><div class="line">javax.net.ssl.SSLSocketFactory socketfactory = (javax.net.ssl.SSLSocketFactory)javax.net.ssl.SSLSocketFactory.getDefault();</div><div class="line">SSLSocket sock;</div><div class="line"></div><div class="line"><span class="comment">// 握手不会带着 SNI</span></div><div class="line">sock = (SSLSocket)socketfactory.createSocket();</div><div class="line">sock.connect(<span class="keyword">new</span> InetSocketAddress(<span class="string">"leancloud.cn"</span>, <span class="number">443</span>));</div><div class="line">sock.startHandshake();</div><div class="line"></div><div class="line"><span class="comment">// 握手不会带着 SNI</span></div><div class="line">sock = (SSLSocket)socketfactory.createSocket(InetAddress.getByName(<span class="string">"leancloud.cn"</span>), <span class="number">443</span>);</div><div class="line">sock.startHandshake();</div><div class="line"></div><div class="line"><span class="comment">// 握手会带着 SNI</span></div><div class="line">sock = (SSLSocket)socketfactory.createSocket(<span class="string">"leancloud.cn"</span>, <span class="number">443</span>);</div><div class="line">sock.startHandshake();</div><div class="line"></div><div class="line"><span class="comment">// 握手会带着 SNI</span></div><div class="line">Socket plainSocket = SocketFactory.getDefault().createSocket();</div><div class="line"><span class="comment">// plainSocket 可以先执行 connect，并且这里可以传递 InetSocketAddress</span></div><div class="line"><span class="comment">// 只要 Layered Socket 创建时用的传 String 的 createSocket 即可</span></div><div class="line">plainSocket.connect(<span class="keyword">new</span> InetSocketAddress(<span class="string">"leancloud.cn"</span>, <span class="number">443</span>), <span class="number">30</span>);</div><div class="line"><span class="comment">// 因为 plainSocket 已经建立连接，所以这里传递 String 的 Host 只是为了将其填入 SNI</span></div><div class="line">sock = socketfactory.createSocket(plainSocket, <span class="string">"leancloud.cn"</span>, <span class="number">443</span>, <span class="keyword">true</span>);</div><div class="line">sock.startHandshake();</div></pre></td></tr></table></figure>
+<p>从这里也能看出来是否使用 SNI 创建连接藏的很隐晦。据说 JDK 不允许传递 InetAddress 的 createSocket 创建出来的 SSLSocket 在 SSL 握手时自动使用 SNI，是因为 InetAddress 构造的时候支持 getByName 函数，该函数可以传个 IP 而不是 Host。这种情况下用户真传个 IP 进来再允许开启 SNI 将这个 IP 放入 SNI 中就不符合 SNI 使用条件了，因为 SNI 只能填 Host Name。不过感觉理由还是比较牵强，总之就是这个 API 设计的有些诡异，藏得有点深。</p>
+<h1 id="HttpClient-对-SNI-的支持"><a href="#HttpClient-对-SNI-的支持" class="headerlink" title="HttpClient 对 SNI 的支持"></a>HttpClient 对 SNI 的支持</h1><p>为了了解缘由需要看一下这个 <a href="https://issues.apache.org/jira/browse/HTTPCLIENT-1119" target="_blank" rel="external">JIRA 讨论</a>。</p>
+<p>注意：以下内容基于:<br>[org.apache.httpcomponents/httpcore “4.4.5”]<br>[org.apache.httpcomponents/httpclient “4.5.2”]<br>来说。以后内部实现可能还会变化。</p>
+<p>在 HttpClient 的框架中，所有 Socket 都是先调用 SocketFactory (有新旧两个版本，org.apache.http.conn.scheme.SocketFactory 和 org.apache.http.conn.socket.ConnectionSocketFactory。两个版本都有 createSocket 和 connectSocket) 的 createSocket 方法先创建 Socket，之后对构造出来的 Socket 进行配置，添加比如 SO_TIMEOUT，SO_REUSEADDR，TCP_NODELAY 等，之后再调用 SocketFactory 的 connectSocket 方法去和 remote 地址建立连接。</p>
+<p>在老版本的 HttpClient 下，默认都是用 javax.net.ssl.SSLSocketFactory 无参的 createSocket 函数来创建 Socket 的。在完全不改动上层实现的情况下是无法支持 SNI 了，所以新建立了一套 API。</p>
+<p>clj-http 0.7.8 翻译为直接使用 HttpClient 的代码如下，这个是不支持 SNI 的：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">SchemeRegistry registry = <span class="keyword">new</span> SchemeRegistry();</div><div class="line">registry.register(<span class="keyword">new</span> Scheme(<span class="string">"http"</span>, <span class="number">80</span>, PlainSocketFactory.getSocketFactory()));</div><div class="line">SSLSocketFactory sslFac = SSLSocketFactory.getSocketFactory();</div><div class="line">sslFac.setHostnameVerifier(SSLSocketFactory.STRICT_HOSTNAME_VERIFIER);</div><div class="line">registry.register(<span class="keyword">new</span> Scheme(<span class="string">"https"</span>, <span class="number">443</span>, sslFac));</div><div class="line"></div><div class="line">BasicClientConnectionManager manager = <span class="keyword">new</span> BasicClientConnectionManager(registry);</div><div class="line"></div><div class="line">HttpPost post = <span class="keyword">new</span> HttpPost(<span class="string">"https://leancloud.cn"</span>);</div><div class="line">DefaultHttpClient httpClient = <span class="keyword">new</span> DefaultHttpClient(manager);</div><div class="line"></div><div class="line">httpClient.execute(post);</div></pre></td></tr></table></figure>
+<p>clj-http 3.4.1 翻译为直接使用 HttpClient 的代码如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div></pre></td><td class="code"><pre><div class="line">Registry&lt;ConnectionSocketFactory&gt; registry = RegistryBuilder.&lt;ConnectionSocketFactory&gt;create()</div><div class="line">                                                            .register(<span class="string">"http"</span>, PlainConnectionSocketFactory.getSocketFactory())</div><div class="line">                                                            .register(<span class="string">"https"</span>, SSLConnectionSocketFactory.getSocketFactory())</div><div class="line">                                                            .build();</div><div class="line"></div><div class="line">BasicHttpClientConnectionManager manager = <span class="keyword">new</span> BasicHttpClientConnectionManager(registry);</div><div class="line">HttpPost post = <span class="keyword">new</span> HttpPost(<span class="string">"https://leancloud.cn"</span>);</div><div class="line"></div><div class="line">HttpClient httpClient = HttpClients.custom()</div><div class="line">                                   .setConnectionManager(manager)</div><div class="line">                                   .build();</div><div class="line"></div><div class="line">httpClient.execute(post);</div></pre></td></tr></table></figure>
+<p>最关键的差别在于老的 clj-http 使用的是 SSLSocketFactory 而新的使用的是 SSLConnectionSocketFactory，再就是老版本使用的是 DefaultHttpClient，新版本使用的是 HttpClients 构造出来的 HttpClient 。</p>
+<p>DefaultHttpClient 中，处理连接部分的是：org.apache.http.impl.conn.DefaultClientConnectionOperator</p>
+<table>
+<thead>
+<tr>
+<th>不同点</th>
+<th>新版</th>
+<th>老版</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>创建 SSLSocket 的 Factory 不同</td>
+<td>SSLConnectionSocketFactory</td>
+<td>SSLSocketFactory</td>
+</tr>
+<tr>
+<td>使用的 HttpClient 不同</td>
+<td>HttpClients 构造出来的 HttpClient</td>
+<td>DefaultHttpClient </td>
+</tr>
+<tr>
+<td>HttpClient 构建连接的类不同</td>
+<td>DefaultHttpClientConnectionOperator</td>
+<td>DefaultClientConnectionOperator</td>
+</tr>
+</tbody>
+</table>
+<p><a href="https://github.com/apache/httpclient/blob/4.5.2/httpclient/src/main/java-deprecated/org/apache/http/impl/conn/DefaultClientConnectionOperator.java#L147" target="_blank" rel="external">DefaultClientConnectionOperator</a> 使用 SSLSocketFactory 构造 SSLSocket，<a href="https://github.com/apache/httpclient/blob/4.5.2/httpclient/src/main/java-deprecated/org/apache/http/conn/ssl/SSLSocketFactory.java#L522" target="_blank" rel="external">用的是 javax.net.ssl.SSLSocketFactory 的无参的 createSocket 构造 SSLSocket</a>，<a href="https://github.com/apache/httpclient/blob/4.5.2/httpclient/src/main/java-deprecated/org/apache/http/conn/ssl/SSLSocketFactory.java#L542" target="_blank" rel="external">并且在 SSLSocketFactory 内使用创建出来的 SSLSocket 与目标 Host 建立连接时使用的 InetAddress 方式传递目标 Host Name</a>，<a href="https://github.com/apache/httpclient/blob/4.5.2/httpclient/src/main/java-deprecated/org/apache/http/conn/ssl/SSLSocketFactory.java#L553" target="_blank" rel="external">之后再开始握手流程</a>，这就无法使用 SNI 了。</p>
+<p><a href="https://github.com/apache/httpclient/blob/4.5.2/httpclient/src/main/java/org/apache/http/impl/conn/DefaultHttpClientConnectionOperator.java#L98" target="_blank" rel="external">DefaultHttpClientConnectionOperator</a> 使用的 <a href="https://github.com/apache/httpclient/blob/4.5.2/httpclient/src/main/java/org/apache/http/conn/ssl/SSLConnectionSocketFactory.java#L313" target="_blank" rel="external">SSLConnectionSocketFactory 先构造出普通的 Socket</a>，<a href="https://github.com/apache/httpclient/blob/4.5.2/httpclient/src/main/java/org/apache/http/conn/ssl/SSLConnectionSocketFactory.java#L337" target="_blank" rel="external">在 SSLConnectionSocketFactory 调用 Socket 的 connect 参数先与目标服务建立连接</a>。注意与 DefaultClientConnectionOperator 的不同，DefaultClientConnectionOperator 在调用 SSLSocketFactory 的 connectSocket 时传入的 Socket 就是 SSLSocket，而 DefaultHttpClientConnectionOperator 在调用 SSLConnectionSocketFactory 的 connectSocket 时传入的 socket 只是普通的 Socket。在这个普通的 Socket 与 remote host 建立连接之后，通过调用  SSLConnectionSocketFactory 内 <a href="https://github.com/apache/httpclient/blob/4.5.2/httpclient/src/main/java/org/apache/http/conn/ssl/SSLConnectionSocketFactory.java#L353" target="_blank" rel="external">createLayeredSocket 在普通 Socket 之上</a>调用 javax.net.ssl.SSLSocketFactory 的传递 Socket 和普通 String 形式 Host Name 的 createSocket 函数构造出 SSLSocket，之后开始握手流程就能使用 SNI 了。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2017/04/14/tls-sni/" data-id="cj1h61au80003qhwx6sot4tkl" class="article-share-link">Partager</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
   
     <article id="post-basic-concurrent-queue" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
@@ -238,7 +349,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2017/04/01/basic-concurrent-queue/" data-id="cj13h8g8w0000oawxhfr00jrs" class="article-share-link">Delen</a>
+      <a data-url="http://yoursite.com/2017/04/01/basic-concurrent-queue/" data-id="cj1h61atz0000qhwx2epsovmt" class="article-share-link">Partager</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -306,7 +417,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2017/03/27/persistent-queue/" data-id="cj13h8g9y000aoawxq79mv4r7" class="article-share-link">Delen</a>
+      <a data-url="http://yoursite.com/2017/03/27/persistent-queue/" data-id="cj1h61au90004qhwxafbru2gr" class="article-share-link">Partager</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Clojure/">Clojure</a></li></ul>
@@ -381,7 +492,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2016/07/17/found-a-bug-in-netty/" data-id="cj13h8g9m0005oawxi77p1qd5" class="article-share-link">Delen</a>
+      <a data-url="http://yoursite.com/2016/07/17/found-a-bug-in-netty/" data-id="cj1h61au30001qhwxy8eohtqi" class="article-share-link">Partager</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
@@ -648,7 +759,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2016/07/03/garbage-first-collector-understanding/" data-id="cj13h8g9v0009oawxlzskvqpd" class="article-share-link">Delen</a>
+      <a data-url="http://yoursite.com/2016/07/03/garbage-first-collector-understanding/" data-id="cj1h61auc0005qhwxc9nr7ey8" class="article-share-link">Partager</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JVM/">JVM</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
@@ -670,7 +781,7 @@
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Labels</h3>
+    <h3 class="widget-title">Mot-clés</h3>
     <div class="widget">
       <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li></ul>
     </div>
@@ -680,7 +791,7 @@
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Tag Cloud</h3>
+    <h3 class="widget-title">Nuage de mot-clés</h3>
     <div class="widget tagcloud">
       <a href="/tags/Algorithm/" style="font-size: 10px;">Algorithm</a> <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a>
     </div>
@@ -689,7 +800,7 @@
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Archieven</h3>
+    <h3 class="widget-title">Archives</h3>
     <div class="widget">
       <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">April 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">March 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">July 2016</a></li></ul>
     </div>
@@ -699,9 +810,13 @@
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Recente berichten</h3>
+    <h3 class="widget-title">Articles récents</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2017/04/14/tls-sni/">一次 TLS SNI 问题</a>
+          </li>
         
           <li>
             <a href="/2017/04/01/basic-concurrent-queue/">普通队列改造为并发队列</a>
@@ -732,7 +847,7 @@
   <div class="outer">
     <div id="footer-info" class="inner">
       &copy; 2017 ylgrgyq<br>
-      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+      Propulsé by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>
 </footer>
