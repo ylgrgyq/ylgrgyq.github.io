@@ -5,24 +5,12 @@
   
   <title>Garbage First Collector 理解 | Ylgrgyq Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="总览缩写约定：
-YGC: Young Generation GC
-OGC: 针对 Old Generation 的 GC，对 G1 来说指 Mixed GC
-FGC: 针对整个 Heap 的 Full GC
-STW: Stop-The-World
-特点
-适合大堆，因为不像 CMS 和 Parallel GC 在对老代进行收集的时候需要将整个老代全部收集，G1 收集老代一次只收集老代的一部分 Reg">
+  <meta name="description" content="研究一下 G1">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Garbage First Collector 理解">
 <meta property="og:url" content="http://yoursite.com/2016/07/03/garbage-first-collector-understanding/index.html">
 <meta property="og:site_name" content="Ylgrgyq Blog">
-<meta property="og:description" content="总览缩写约定：
-YGC: Young Generation GC
-OGC: 针对 Old Generation 的 GC，对 G1 来说指 Mixed GC
-FGC: 针对整个 Heap 的 Full GC
-STW: Stop-The-World
-特点
-适合大堆，因为不像 CMS 和 Parallel GC 在对老代进行收集的时候需要将整个老代全部收集，G1 收集老代一次只收集老代的一部分 Reg">
+<meta property="og:description" content="研究一下 G1">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/17271377/80db9c1c-56ac-11e6-9ba2-eb69502aff42.png">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/17271397/db5d8952-56ac-11e6-8fae-3fd7c772aead.png">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544439/b42716f2-4138-11e6-8c8b-aa80b00ba319.png">
@@ -33,16 +21,10 @@ STW: Stop-The-World
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544442/d1748c76-4138-11e6-902d-7c37b6bb0843.png">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544443/d4082fe2-4138-11e6-99e0-ea98ae50d94c.png">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544448/f72dab3c-4138-11e6-9e6d-40e212ccc196.png">
-<meta property="og:updated_time" content="2017-03-28T06:20:05.000Z">
+<meta property="og:updated_time" content="2017-04-21T05:40:01.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Garbage First Collector 理解">
-<meta name="twitter:description" content="总览缩写约定：
-YGC: Young Generation GC
-OGC: 针对 Old Generation 的 GC，对 G1 来说指 Mixed GC
-FGC: 针对整个 Heap 的 Full GC
-STW: Stop-The-World
-特点
-适合大堆，因为不像 CMS 和 Parallel GC 在对老代进行收集的时候需要将整个老代全部收集，G1 收集老代一次只收集老代的一部分 Reg">
+<meta name="twitter:description" content="研究一下 G1">
 <meta name="twitter:image" content="https://cloud.githubusercontent.com/assets/1115061/17271377/80db9c1c-56ac-11e6-9ba2-eb69502aff42.png">
   
     <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
@@ -347,7 +329,7 @@ STW: Stop-The-World
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2016/07/03/garbage-first-collector-understanding/" data-id="cj1h61auc0005qhwxc9nr7ey8" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2016/07/03/garbage-first-collector-understanding/" data-id="cj1reky1s00044uwxw6pi77vw" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JVM/">JVM</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <url>
+    <loc>http://yoursite.com/2017/03/27/persistent-queue/</loc>
+    
+    <lastmod>2017-04-21T05:40:26.000Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2016/07/03/garbage-first-collector-understanding/</loc>
+    
+    <lastmod>2017-04-21T05:40:01.000Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2016/07/17/found-a-bug-in-netty/</loc>
+    
+    <lastmod>2017-04-21T05:39:42.000Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2017/04/01/basic-concurrent-queue/</loc>
+    
+    <lastmod>2017-04-21T05:39:13.000Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://yoursite.com/2017/04/14/tls-sni/</loc>
+    
+    <lastmod>2017-04-21T05:38:24.000Z</lastmod>
+    
+  </url>
+  
+</urlset>

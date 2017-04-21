@@ -5,22 +5,19 @@
   
   <title>追踪 Netty 异常占用堆外内存的经验分享 | Ylgrgyq Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 Netty 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。
-从现象上分析，我们能确定一定是服务内部有地方出现了内存泄露。在这个出问题的服务上有大量的">
+  <meta name="description" content="追踪一个 Netty 里的 bug">
 <meta property="og:type" content="article">
 <meta property="og:title" content="追踪 Netty 异常占用堆外内存的经验分享">
 <meta property="og:url" content="http://yoursite.com/2016/07/17/found-a-bug-in-netty/index.html">
 <meta property="og:site_name" content="Ylgrgyq Blog">
-<meta property="og:description" content="本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 Netty 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。
-从现象上分析，我们能确定一定是服务内部有地方出现了内存泄露。在这个出问题的服务上有大量的">
+<meta property="og:description" content="追踪一个 Netty 里的 bug">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16897985/53d4ae34-4bf8-11e6-8170-acc9eee1a42c.png">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16897983/472ae7fc-4bf8-11e6-8a69-a311827348b0.png">
 <meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16897981/426fd038-4bf8-11e6-95d7-6b657213c973.png">
-<meta property="og:updated_time" content="2017-04-15T23:45:06.000Z">
+<meta property="og:updated_time" content="2017-04-21T05:39:42.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="追踪 Netty 异常占用堆外内存的经验分享">
-<meta name="twitter:description" content="本文记述了定位 Netty 的一处漏洞的全过程。事情的起因是我们一个使用了 Netty 的服务，随着运行时间的增长，其占用的堆外内存会逐步攀升，大概持续运行三四天左右，堆外内存会被全部占满，然后只能重启来解决问题。好在服务是冗余配置的，并且可以自动进行 Load Balance，所以每次重启不会带来什么损失。
-从现象上分析，我们能确定一定是服务内部有地方出现了内存泄露。在这个出问题的服务上有大量的">
+<meta name="twitter:description" content="追踪一个 Netty 里的 bug">
 <meta name="twitter:image" content="https://cloud.githubusercontent.com/assets/1115061/16897985/53d4ae34-4bf8-11e6-8170-acc9eee1a42c.png">
   
     <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
@@ -133,7 +130,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2016/07/17/found-a-bug-in-netty/" data-id="cj1h61au30001qhwxy8eohtqi" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2016/07/17/found-a-bug-in-netty/" data-id="cj1reky1a00004uwx8542u68s" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Bug/">Bug</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Netty/">Netty</a></li></ul>

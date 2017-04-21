@@ -5,19 +5,16 @@
   
   <title>普通队列改造为并发队列 | Ylgrgyq Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="起初是看这篇文章写的挺好的，介绍了无锁队列的实现。按照它的说法我们来实现一下:
-1234567891011121314151617181920212223242526272829303132333435363738394041public class ConcurrentListQueue&amp;lt;T&amp;gt; &amp;#123;  private Node&amp;lt;T&amp;gt; head, tail;  pr">
+  <meta name="description" content="涉及并发队列实现、自旋锁、False Sharing 等问题">
 <meta property="og:type" content="article">
 <meta property="og:title" content="普通队列改造为并发队列">
 <meta property="og:url" content="http://yoursite.com/2017/04/01/basic-concurrent-queue/index.html">
 <meta property="og:site_name" content="Ylgrgyq Blog">
-<meta property="og:description" content="起初是看这篇文章写的挺好的，介绍了无锁队列的实现。按照它的说法我们来实现一下:
-1234567891011121314151617181920212223242526272829303132333435363738394041public class ConcurrentListQueue&amp;lt;T&amp;gt; &amp;#123;  private Node&amp;lt;T&amp;gt; head, tail;  pr">
-<meta property="og:updated_time" content="2017-04-04T11:43:53.000Z">
+<meta property="og:description" content="涉及并发队列实现、自旋锁、False Sharing 等问题">
+<meta property="og:updated_time" content="2017-04-21T05:39:13.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="普通队列改造为并发队列">
-<meta name="twitter:description" content="起初是看这篇文章写的挺好的，介绍了无锁队列的实现。按照它的说法我们来实现一下:
-1234567891011121314151617181920212223242526272829303132333435363738394041public class ConcurrentListQueue&amp;lt;T&amp;gt; &amp;#123;  private Node&amp;lt;T&amp;gt; head, tail;  pr">
+<meta name="twitter:description" content="涉及并发队列实现、自旋锁、False Sharing 等问题">
   
     <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
   
@@ -243,7 +240,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://yoursite.com/2017/04/01/basic-concurrent-queue/" data-id="cj1h61atz0000qhwx2epsovmt" class="article-share-link">Share</a>
+      <a data-url="http://yoursite.com/2017/04/01/basic-concurrent-queue/" data-id="cj1reky1q00034uwxn3ys9mgk" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
