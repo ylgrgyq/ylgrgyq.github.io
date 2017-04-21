@@ -4,9 +4,9 @@
   
   <link href="/atom.xml" rel="self"/>
   
-  <link href="http://yoursite.com/"/>
+  <link href="http://ylgrgyq.github.io/"/>
   <updated>2017-04-21T05:38:24.000Z</updated>
-  <id>http://yoursite.com/</id>
+  <id>http://ylgrgyq.github.io/</id>
   
   <author>
     <name>ylgrgyq</name>
@@ -17,8 +17,8 @@
   
   <entry>
     <title>一次 TLS SNI 问题</title>
-    <link href="http://yoursite.com/2017/04/14/tls-sni/"/>
-    <id>http://yoursite.com/2017/04/14/tls-sni/</id>
+    <link href="http://ylgrgyq.github.io/2017/04/14/tls-sni/"/>
+    <id>http://ylgrgyq.github.io/2017/04/14/tls-sni/</id>
     <published>2017-04-14T01:28:46.000Z</published>
     <updated>2017-04-21T05:38:24.000Z</updated>
     
@@ -106,16 +106,16 @@
     </summary>
     
     
-      <category term="Java" scheme="http://yoursite.com/tags/Java/"/>
+      <category term="Bug" scheme="http://ylgrgyq.github.io/tags/Bug/"/>
     
-      <category term="Bug" scheme="http://yoursite.com/tags/Bug/"/>
+      <category term="Java" scheme="http://ylgrgyq.github.io/tags/Java/"/>
     
   </entry>
   
   <entry>
     <title>普通队列改造为并发队列</title>
-    <link href="http://yoursite.com/2017/04/01/basic-concurrent-queue/"/>
-    <id>http://yoursite.com/2017/04/01/basic-concurrent-queue/</id>
+    <link href="http://ylgrgyq.github.io/2017/04/01/basic-concurrent-queue/"/>
+    <id>http://ylgrgyq.github.io/2017/04/01/basic-concurrent-queue/</id>
     <published>2017-04-01T13:21:43.000Z</published>
     <updated>2017-04-21T05:39:13.000Z</updated>
     
@@ -279,16 +279,16 @@
     </summary>
     
     
-      <category term="Java" scheme="http://yoursite.com/tags/Java/"/>
+      <category term="Java" scheme="http://ylgrgyq.github.io/tags/Java/"/>
     
-      <category term="Algorithm" scheme="http://yoursite.com/tags/Algorithm/"/>
+      <category term="Algorithm" scheme="http://ylgrgyq.github.io/tags/Algorithm/"/>
     
   </entry>
   
   <entry>
     <title>不可变队列的实现</title>
-    <link href="http://yoursite.com/2017/03/27/persistent-queue/"/>
-    <id>http://yoursite.com/2017/03/27/persistent-queue/</id>
+    <link href="http://ylgrgyq.github.io/2017/03/27/persistent-queue/"/>
+    <id>http://ylgrgyq.github.io/2017/03/27/persistent-queue/</id>
     <published>2017-03-27T05:30:52.000Z</published>
     <updated>2017-04-21T05:40:26.000Z</updated>
     
@@ -331,14 +331,14 @@
     </summary>
     
     
-      <category term="Clojure" scheme="http://yoursite.com/tags/Clojure/"/>
+      <category term="Clojure" scheme="http://ylgrgyq.github.io/tags/Clojure/"/>
     
   </entry>
   
   <entry>
     <title>追踪 Netty 异常占用堆外内存的经验分享</title>
-    <link href="http://yoursite.com/2016/07/17/found-a-bug-in-netty/"/>
-    <id>http://yoursite.com/2016/07/17/found-a-bug-in-netty/</id>
+    <link href="http://ylgrgyq.github.io/2016/07/17/found-a-bug-in-netty/"/>
+    <id>http://ylgrgyq.github.io/2016/07/17/found-a-bug-in-netty/</id>
     <published>2016-07-17T00:21:30.000Z</published>
     <updated>2017-04-21T05:39:42.000Z</updated>
     
@@ -388,18 +388,18 @@
     </summary>
     
     
-      <category term="Netty" scheme="http://yoursite.com/tags/Netty/"/>
+      <category term="Bug" scheme="http://ylgrgyq.github.io/tags/Bug/"/>
     
-      <category term="Java" scheme="http://yoursite.com/tags/Java/"/>
+      <category term="Java" scheme="http://ylgrgyq.github.io/tags/Java/"/>
     
-      <category term="Bug" scheme="http://yoursite.com/tags/Bug/"/>
+      <category term="Netty" scheme="http://ylgrgyq.github.io/tags/Netty/"/>
     
   </entry>
   
   <entry>
     <title>Garbage First Collector 理解</title>
-    <link href="http://yoursite.com/2016/07/03/garbage-first-collector-understanding/"/>
-    <id>http://yoursite.com/2016/07/03/garbage-first-collector-understanding/</id>
+    <link href="http://ylgrgyq.github.io/2016/07/03/garbage-first-collector-understanding/"/>
+    <id>http://ylgrgyq.github.io/2016/07/03/garbage-first-collector-understanding/</id>
     <published>2016-07-03T07:39:30.000Z</published>
     <updated>2017-04-21T05:40:01.000Z</updated>
     
@@ -641,9 +641,9 @@
     </summary>
     
     
-      <category term="Java" scheme="http://yoursite.com/tags/Java/"/>
+      <category term="Java" scheme="http://ylgrgyq.github.io/tags/Java/"/>
     
-      <category term="JVM" scheme="http://yoursite.com/tags/JVM/"/>
+      <category term="JVM" scheme="http://ylgrgyq.github.io/tags/JVM/"/>
     
   </entry>
   
