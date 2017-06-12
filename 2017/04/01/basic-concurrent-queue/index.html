@@ -1,89 +1,76 @@
-<!DOCTYPE html>
+<!DOCTYPE HTML>
 <html>
 <head>
   <meta charset="utf-8">
   
   <title>普通队列改造为并发队列 | Ylgrgyq Blog</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="author" content="ylgrgyq">
+  
   <meta name="description" content="涉及并发队列实现、自旋锁、False Sharing 等问题">
-<meta property="og:type" content="article">
-<meta property="og:title" content="普通队列改造为并发队列">
-<meta property="og:url" content="http://ylgrgyq.github.io/2017/04/01/basic-concurrent-queue/index.html">
-<meta property="og:site_name" content="Ylgrgyq Blog">
-<meta property="og:description" content="涉及并发队列实现、自旋锁、False Sharing 等问题">
-<meta property="og:updated_time" content="2017-04-21T05:39:13.000Z">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="普通队列改造为并发队列">
-<meta name="twitter:description" content="涉及并发队列实现、自旋锁、False Sharing 等问题">
-  
-    <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
   
   
-    <link rel="icon" href="/favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <meta property="og:title" content="普通队列改造为并发队列"/>
+  <meta property="og:site_name" content="Ylgrgyq Blog"/>
+
   
+    <meta property="og:image" content="undefined"/>
   
-    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+
+  <link href="/favicon.png" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
   
-  <link rel="stylesheet" href="/css/style.css">
-  
+<script>
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+			m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	ga('create', 'UA-80224793-1', 'auto');
+	ga('send', 'pageview');
+
+</script>
+
 
 </head>
 
+
 <body>
-  <div id="container">
-    <div id="wrap">
-      <header id="header">
-  <div id="banner"></div>
-  <div id="header-outer" class="outer">
-    <div id="header-title" class="inner">
-      <h1 id="logo-wrap">
-        <a href="/" id="logo">Ylgrgyq Blog</a>
-      </h1>
-      
-    </div>
-    <div id="header-inner" class="inner">
-      <nav id="main-nav">
-        <a id="main-nav-toggle" class="nav-icon"></a>
-        
-          <a class="main-nav-link" href="/">Home</a>
-        
-          <a class="main-nav-link" href="/archives">Archives</a>
-        
-      </nav>
-      <nav id="sub-nav">
-        
-          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
-        
-        <a id="nav-search-btn" class="nav-icon" title="Zoeken"></a>
-      </nav>
-      <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://ylgrgyq.github.io"></form>
-      </div>
-    </div>
-  </div>
+  <header id="header" class="inner"><div class="alignleft">
+  <h1><a href="/">Ylgrgyq Blog</a></h1>
+  <h2><a href="/"></a></h2>
+</div>
+<nav id="main-nav" class="alignright">
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+  </ul>
+  <div class="clearfix"></div>
+</nav>
+<div class="clearfix"></div>
 </header>
-      <div class="outer">
-        <section id="main"><article id="post-basic-concurrent-queue" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2017/04/01/basic-concurrent-queue/" class="article-date">
-  <time datetime="2017-04-01T13:21:43.000Z" itemprop="datePublished">2017-04-01</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
+  <div id="content" class="inner">
+    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
   
-    <h1 class="article-title" itemprop="name">
-      普通队列改造为并发队列
-    </h1>
+  <div class="post-content">
+    <header>
+      
+        <div class="icon"></div>
+        <time datetime="2017-04-01T13:21:43.000Z"><a href="/2017/04/01/basic-concurrent-queue/">2017-04-01</a></time>
+      
+      
+  
+    <h1 class="title">普通队列改造为并发队列</h1>
   
 
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
+    </header>
+    <div class="entry">
       
         <p>起初是看<a href="http://www.drdobbs.com/parallel/writing-a-generalized-concurrent-queue/211601363" target="_blank" rel="external">这篇文章</a>写的挺好的，介绍了无锁队列的实现。按照它的说法我们来实现一下:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div><div class="line">20</div><div class="line">21</div><div class="line">22</div><div class="line">23</div><div class="line">24</div><div class="line">25</div><div class="line">26</div><div class="line">27</div><div class="line">28</div><div class="line">29</div><div class="line">30</div><div class="line">31</div><div class="line">32</div><div class="line">33</div><div class="line">34</div><div class="line">35</div><div class="line">36</div><div class="line">37</div><div class="line">38</div><div class="line">39</div><div class="line">40</div><div class="line">41</div></pre></td><td class="code"><pre><div class="line">public class ConcurrentListQueue&lt;T&gt; &#123;</div><div class="line">  private Node&lt;T&gt; head, tail;</div><div class="line">  private AtomicInteger producerLock, consumerLock;</div><div class="line">  private static class Node&lt;T&gt; &#123;</div><div class="line">      private T data;</div><div class="line">      private Node&lt;T&gt; next;</div><div class="line"></div><div class="line">      private Node(T d) &#123;</div><div class="line">          this.data = d;</div><div class="line">      &#125;</div><div class="line">  &#125;</div><div class="line"></div><div class="line">  public void add(T data) &#123;</div><div class="line">      Node&lt;T&gt; n = new Node&lt;&gt;(data);</div><div class="line"></div><div class="line">      while (!producerLock.compareAndSet(0, 1)) &#123;</div><div class="line">      &#125;</div><div class="line">    </div><div class="line">      tail.next = n;</div><div class="line">      tail = n;</div><div class="line">      producerLock.set(0);</div><div class="line">  &#125;</div><div class="line">  </div><div class="line">  public T poll() &#123;</div><div class="line">      T d = null;</div><div class="line">      while (!consumerLock.compareAndSet(0, 1)) &#123;</div><div class="line">      &#125;</div><div class="line">    </div><div class="line">      Node&lt;T&gt; h = head;</div><div class="line">      Node&lt;T&gt; next = h.next;</div><div class="line">      if (next != null) &#123;</div><div class="line">          d = next.data;</div><div class="line">          next.data = null;</div><div class="line">          head = next;</div><div class="line">          h.next = null;</div><div class="line">      &#125;</div><div class="line">    </div><div class="line">      consumerLock.set(0);</div><div class="line">      return d;</div><div class="line">  &#125;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
@@ -239,136 +226,100 @@
 
       
     </div>
-    <footer class="article-footer">
-      <a data-url="http://ylgrgyq.github.io/2017/04/01/basic-concurrent-queue/" data-id="cj3thm1ct0000ymwxg14nv9zq" class="article-share-link">Delen</a>
+    <footer>
       
-      
-  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+        
+        
+  
+  <div class="tags">
+    <a href="/tags/Java/">Java</a>, <a href="/tags/Algorithm/">Algorithm</a>
+  </div>
 
+        
+  <div class="addthis addthis_toolbox addthis_default_style">
+    
+    
+      <a class="addthis_button_tweet"></a>
+    
+    
+      <a class="addthis_button_google_plusone" g:plusone:size="medium"></a>
+    
+    
+    <a class="addthis_counter addthis_pill_style"></a>
+  </div>
+  <script type="text/javascript" src="//s7.addthis.com/js/300/addthis_widget.js"></script>
+
+      
+      <div class="clearfix"></div>
     </footer>
   </div>
-  
-    
-<nav id="article-nav">
-  
-    <a href="/2017/04/14/tls-sni/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Nieuwer</strong>
-      <div class="article-nav-title">
-        
-          一次 TLS SNI 问题
-        
-      </div>
-    </a>
-  
-  
-    <a href="/2017/03/27/persistent-queue/" id="article-nav-older" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Ouder</strong>
-      <div class="article-nav-title">不可变队列的实现</div>
-    </a>
-  
-</nav>
-
-  
 </article>
 
+
+<section id="comment">
+  <h1 class="title">Kommentare</h1>
+
+  
 </section>
-        
-          <aside id="sidebar">
-  
-    
+
+</div></div>
+    <aside id="sidebar" class="alignright">
+  <div class="search">
+  <form action="//google.com/search" method="get" accept-charset="utf-8">
+    <input type="search" name="q" results="0" placeholder="Suche">
+    <input type="hidden" name="q" value="site:ylgrgyq.github.io">
+  </form>
+</div>
 
   
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Labels</h3>
-    <div class="widget">
-      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Bug/">Bug</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Network/">Network</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP/">TCP</a></li></ul>
-    </div>
-  </div>
-
 
   
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Tag Cloud</h3>
-    <div class="widget tagcloud">
-      <a href="/tags/Algorithm/" style="font-size: 10px;">Algorithm</a> <a href="/tags/Bug/" style="font-size: 15px;">Bug</a> <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a> <a href="/tags/Network/" style="font-size: 10px;">Network</a> <a href="/tags/TCP/" style="font-size: 10px;">TCP</a>
-    </div>
-  </div>
-
+<div class="widget tag">
+  <h3 class="title">Tags</h3>
+  <ul class="entry">
   
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Archieven</h3>
-    <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">五月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">四月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">三月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">七月 2016</a></li></ul>
-    </div>
-  </div>
-
-
+    <li><a href="/tags/Algorithm/">Algorithm</a><small>1</small></li>
   
-    
-  <div class="widget-wrap">
-    <h3 class="widget-title">Recente berichten</h3>
-    <div class="widget">
-      <ul>
-        
-          <li>
-            <a href="/2017/05/18/tcp-backlog/">TCP Backlog</a>
-          </li>
-        
-          <li>
-            <a href="/2017/04/14/tls-sni/">一次 TLS SNI 问题</a>
-          </li>
-        
-          <li>
-            <a href="/2017/04/01/basic-concurrent-queue/">普通队列改造为并发队列</a>
-          </li>
-        
-          <li>
-            <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
-          </li>
-        
-          <li>
-            <a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
-          </li>
-        
-      </ul>
-    </div>
-  </div>
-
+    <li><a href="/tags/Bug/">Bug</a><small>2</small></li>
   
+    <li><a href="/tags/Clojure/">Clojure</a><small>1</small></li>
+  
+    <li><a href="/tags/JVM/">JVM</a><small>1</small></li>
+  
+    <li><a href="/tags/Java/">Java</a><small>4</small></li>
+  
+    <li><a href="/tags/Netty/">Netty</a><small>1</small></li>
+  
+    <li><a href="/tags/Network/">Network</a><small>1</small></li>
+  
+    <li><a href="/tags/TCP/">TCP</a><small>1</small></li>
+  
+  </ul>
+</div>
+
 </aside>
-        
-      </div>
-      <footer id="footer">
-  
-  <div class="outer">
-    <div id="footer-info" class="inner">
-      &copy; 2017 ylgrgyq<br>
-      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
-    </div>
+    <div class="clearfix"></div>
   </div>
-</footer>
-    </div>
-    <nav id="mobile-nav">
+  <footer id="footer" class="inner"><div class="alignleft">
   
-    <a href="/" class="mobile-nav-link">Home</a>
+  &copy; 2017 ylgrgyq
   
-    <a href="/archives" class="mobile-nav-link">Archives</a>
-  
-</nav>
-    
-
-<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
-
-
-  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
-  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+</div>
+<div class="clearfix"></div></footer>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
 
 
-<script src="/js/script.js"></script>
 
-  </div>
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
 </body>
 </html>
