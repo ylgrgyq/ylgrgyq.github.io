@@ -1,76 +1,113 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   
   <title>Garbage First Collector 理解 | Ylgrgyq Blog</title>
-  <meta name="author" content="ylgrgyq">
-  
-  <meta name="description" content="研究一下 G1">
-  
-  
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-
-  <meta property="og:title" content="Garbage First Collector 理解"/>
-  <meta property="og:site_name" content="Ylgrgyq Blog"/>
-
+  <meta name="description" content="研究一下 G1">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Garbage First Collector 理解">
+<meta property="og:url" content="http://ylgrgyq.github.io/2016/07/03/garbage-first-collector-understanding/index.html">
+<meta property="og:site_name" content="Ylgrgyq Blog">
+<meta property="og:description" content="研究一下 G1">
+<meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/17271377/80db9c1c-56ac-11e6-9ba2-eb69502aff42.png">
+<meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/17271397/db5d8952-56ac-11e6-8fae-3fd7c772aead.png">
+<meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544439/b42716f2-4138-11e6-8c8b-aa80b00ba319.png">
+<meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544449/f9a589ca-4138-11e6-9954-68f989881d04.png">
+<meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544448/f72dab3c-4138-11e6-9e6d-40e212ccc196.png">
+<meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544440/b7d7aff0-4138-11e6-86ef-a2eb93d1092f.png">
+<meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/19113472/54ef4e9a-8b3c-11e6-8265-165ae585e56f.png">
+<meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544442/d1748c76-4138-11e6-902d-7c37b6bb0843.png">
+<meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544443/d4082fe2-4138-11e6-99e0-ea98ae50d94c.png">
+<meta property="og:image" content="https://cloud.githubusercontent.com/assets/1115061/16544448/f72dab3c-4138-11e6-9e6d-40e212ccc196.png">
+<meta property="og:updated_time" content="2017-04-21T05:40:01.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Garbage First Collector 理解">
+<meta name="twitter:description" content="研究一下 G1">
+<meta name="twitter:image" content="https://cloud.githubusercontent.com/assets/1115061/17271377/80db9c1c-56ac-11e6-9ba2-eb69502aff42.png">
   
-    <meta property="og:image" content="undefined"/>
+    <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
   
-
-  <link href="/favicon.png" rel="icon">
-  <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
-  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
-  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
   
-<script>
-	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-		(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-			m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-	})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  
+<!-- Google Analytics -->
+<script type="text/javascript">
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-	ga('create', 'UA-80224793-1', 'auto');
-	ga('send', 'pageview');
+ga('create', 'UA-80224793-1', 'auto');
+ga('send', 'pageview');
 
 </script>
+<!-- End Google Analytics -->
 
 
 </head>
 
-
 <body>
-  <header id="header" class="inner"><div class="alignleft">
-  <h1><a href="/">Ylgrgyq Blog</a></h1>
-  <h2><a href="/"></a></h2>
-</div>
-<nav id="main-nav" class="alignright">
-  <ul>
-    
-      <li><a href="/">Home</a></li>
-    
-      <li><a href="/archives">Archives</a></li>
-    
-  </ul>
-  <div class="clearfix"></div>
-</nav>
-<div class="clearfix"></div>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Ylgrgyq Blog</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Zoeken"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://ylgrgyq.github.io"></form>
+      </div>
+    </div>
+  </div>
 </header>
-  <div id="content" class="inner">
-    <div id="main-col" class="alignleft"><div id="wrapper"><article class="post">
+      <div class="outer">
+        <section id="main"><article id="post-garbage-first-collector-understanding" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/07/03/garbage-first-collector-understanding/" class="article-date">
+  <time datetime="2016-07-03T07:39:30.000Z" itemprop="datePublished">2016-07-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
   
-  <div class="post-content">
-    <header>
-      
-        <div class="icon"></div>
-        <time datetime="2016-07-03T07:39:30.000Z"><a href="/2016/07/03/garbage-first-collector-understanding/">2016-07-03</a></time>
-      
-      
-  
-    <h1 class="title">Garbage First Collector 理解</h1>
+    <h1 class="article-title" itemprop="name">
+      Garbage First Collector 理解
+    </h1>
   
 
-    </header>
-    <div class="entry">
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
       
         <h1 id="总览"><a href="#总览" class="headerlink" title="总览"></a>总览</h1><p>缩写约定：</p>
 <p>YGC: Young Generation GC</p>
@@ -304,100 +341,131 @@
 
       
     </div>
-    <footer>
+    <footer class="article-footer">
+      <a data-url="http://ylgrgyq.github.io/2016/07/03/garbage-first-collector-understanding/" data-id="cj3tfqo620009epwx2nnmr1xf" class="article-share-link">Delen</a>
       
-        
-        
-  
-  <div class="tags">
-    <a href="/tags/Java/">Java</a>, <a href="/tags/JVM/">JVM</a>
-  </div>
-
-        
-  <div class="addthis addthis_toolbox addthis_default_style">
-    
-    
-      <a class="addthis_button_tweet"></a>
-    
-    
-      <a class="addthis_button_google_plusone" g:plusone:size="medium"></a>
-    
-    
-    <a class="addthis_counter addthis_pill_style"></a>
-  </div>
-  <script type="text/javascript" src="//s7.addthis.com/js/300/addthis_widget.js"></script>
-
       
-      <div class="clearfix"></div>
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/JVM/">JVM</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+
     </footer>
   </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2016/07/17/found-a-bug-in-netty/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Nieuwer</strong>
+      <div class="article-nav-title">
+        
+          追踪 Netty 异常占用堆外内存的经验分享
+        
+      </div>
+    </a>
+  
+  
+</nav>
+
+  
 </article>
 
-
-<section id="comment">
-  <h1 class="title">Kommentarer</h1>
-
-  
 </section>
-
-</div></div>
-    <aside id="sidebar" class="alignright">
-  <div class="search">
-  <form action="//google.com/search" method="get" accept-charset="utf-8">
-    <input type="search" name="q" results="0" placeholder="Søk">
-    <input type="hidden" name="q" value="site:ylgrgyq.github.io">
-  </form>
-</div>
+        
+          <aside id="sidebar">
+  
+    
 
   
-
-  
-<div class="widget tag">
-  <h3 class="title">Tags</h3>
-  <ul class="entry">
-  
-    <li><a href="/tags/Algorithm/">Algorithm</a><small>1</small></li>
-  
-    <li><a href="/tags/Bug/">Bug</a><small>2</small></li>
-  
-    <li><a href="/tags/Clojure/">Clojure</a><small>1</small></li>
-  
-    <li><a href="/tags/JVM/">JVM</a><small>1</small></li>
-  
-    <li><a href="/tags/Java/">Java</a><small>4</small></li>
-  
-    <li><a href="/tags/Netty/">Netty</a><small>1</small></li>
-  
-    <li><a href="/tags/Network/">Network</a><small>1</small></li>
-  
-    <li><a href="/tags/TCP/">TCP</a><small>1</small></li>
-  
-  </ul>
-</div>
-
-</aside>
-    <div class="clearfix"></div>
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Labels</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Bug/">Bug</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Network/">Network</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP/">TCP</a></li></ul>
+    </div>
   </div>
-  <footer id="footer" class="inner"><div class="alignleft">
+
+
   
-  &copy; 2017 ylgrgyq
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Algorithm/" style="font-size: 10px;">Algorithm</a> <a href="/tags/Bug/" style="font-size: 15px;">Bug</a> <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a> <a href="/tags/Network/" style="font-size: 10px;">Network</a> <a href="/tags/TCP/" style="font-size: 10px;">TCP</a>
+    </div>
+  </div>
+
   
-</div>
-<div class="clearfix"></div></footer>
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
-<script src="/js/jquery.imagesloaded.min.js"></script>
-<script src="/js/gallery.js"></script>
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archieven</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">五月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">四月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">三月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">七月 2016</a></li></ul>
+    </div>
+  </div>
 
 
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recente berichten</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2017/05/18/tcp-backlog/">TCP Backlog</a>
+          </li>
+        
+          <li>
+            <a href="/2017/04/14/tls-sni/">一次 TLS SNI 问题</a>
+          </li>
+        
+          <li>
+            <a href="/2017/04/01/basic-concurrent-queue/">普通队列改造为并发队列</a>
+          </li>
+        
+          <li>
+            <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
+          </li>
+        
+          <li>
+            <a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ylgrgyq<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 
-<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
-<script src="/fancybox/jquery.fancybox.pack.js"></script>
-<script type="text/javascript">
-(function($){
-  $('.fancybox').fancybox();
-})(jQuery);
-</script>
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
 
+
+<script src="/js/script.js"></script>
+
+  </div>
 </body>
 </html>
