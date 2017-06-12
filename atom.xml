@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ylgrgyq.github.io/"/>
-  <updated>2017-06-12T01:52:59.000Z</updated>
+  <updated>2017-06-12T01:57:16.000Z</updated>
   <id>http://ylgrgyq.github.io/</id>
   
   <author>
@@ -20,7 +20,7 @@
     <link href="http://ylgrgyq.github.io/2017/05/18/tcp-backlog/"/>
     <id>http://ylgrgyq.github.io/2017/05/18/tcp-backlog/</id>
     <published>2017-05-18T01:01:10.000Z</published>
-    <updated>2017-06-12T01:52:59.000Z</updated>
+    <updated>2017-06-12T01:57:16.000Z</updated>
     
     <content type="html"><![CDATA[<p>这篇文章对 TCP Backlog 的说明写的特别好，<a href="http://veithen.github.io/2014/01/01/how-tcp-backlog-works-in-linux.html" target="_blank" rel="external">How TCP backlog works in Linux</a> 强烈建议看一看，希望这篇文章的地址不要变化，方便以后回顾。</p>
 <p>Linux 上 TCP 握手的时候为每个独立进程维护了两个队列，一个是 Server 在收到 Client 的 SYN 并回复 SYN/ACK 之后，会将连接放入一个 incomplete sockets queue，这个队列的大小受到 net.ipv4.tcp_max_syn_backlog 的限制，超过这个队列长度之后 Server 再收到 SYN 就不会做响应，等 Client 超时之后会重传 SYN 再次尝试建立连接。<strong>需要注意的是在 net.ipv4.tcp_syncookies 置位时 net.ipv4.tcp_max_syn_backlog 参数会失效</strong>。net.ipv4.tcp_syncookies 的相关信息在下面专门说。</p>
@@ -66,6 +66,10 @@
     
     </summary>
     
+    
+      <category term="Network" scheme="http://ylgrgyq.github.io/tags/Network/"/>
+    
+      <category term="TCP" scheme="http://ylgrgyq.github.io/tags/TCP/"/>
     
   </entry>
   
