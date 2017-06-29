@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>TCP TIME-WAIT | A Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="TIME-WAIT 是 TCP 挥手过程的一个状态。很多地方都对它有说明，这里只贴两个图唤起记忆。下面这个是 TCP 完整的状态图：  图片来自：http://www.tcpipguide.com/free/t_TCPOperationalOverviewandtheTCPFiniteStateMachineF-2.htm 看到最下面有个 TIME-WAIT 状态。状态图可能看着不那么直观，可以看">
+<meta property="og:type" content="article">
+<meta property="og:title" content="TCP TIME-WAIT">
+<meta property="og:url" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/index.html">
+<meta property="og:site_name" content="A Blog">
+<meta property="og:description" content="TIME-WAIT 是 TCP 挥手过程的一个状态。很多地方都对它有说明，这里只贴两个图唤起记忆。下面这个是 TCP 完整的状态图：  图片来自：http://www.tcpipguide.com/free/t_TCPOperationalOverviewandtheTCPFiniteStateMachineF-2.htm 看到最下面有个 TIME-WAIT 状态。状态图可能看着不那么直观，可以看">
+<meta property="og:image" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/TCP-State.png">
+<meta property="og:image" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/TCP-Fin.png">
+<meta property="og:image" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/TIME-WAIT-Function.png">
+<meta property="og:image" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/TCP-Delay.png">
+<meta property="og:image" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/tcp_tw_reuse.png">
+<meta property="og:image" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/so-reuseaddr.png">
+<meta property="og:updated_time" content="2017-06-29T23:05:56.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="TCP TIME-WAIT">
+<meta name="twitter:description" content="TIME-WAIT 是 TCP 挥手过程的一个状态。很多地方都对它有说明，这里只贴两个图唤起记忆。下面这个是 TCP 完整的状态图：  图片来自：http://www.tcpipguide.com/free/t_TCPOperationalOverviewandtheTCPFiniteStateMachineF-2.htm 看到最下面有个 TIME-WAIT 状态。状态图可能看着不那么直观，可以看">
+<meta name="twitter:image" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/TCP-State.png">
+  
+    <link rel="alternate" href="/atom.xml" title="A Blog" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  
+<!-- Google Analytics -->
+<script type="text/javascript">
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-80224793-1', 'auto');
+ga('send', 'pageview');
+
+</script>
+<!-- End Google Analytics -->
+
+
+</head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">A Blog</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">by ylgrgyq</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://ylgrgyq.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-tcp-time-wait" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2017/06/30/tcp-time-wait/" class="article-date">
+  <time datetime="2017-06-29T22:56:06.000Z" itemprop="datePublished">2017-06-30</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      TCP TIME-WAIT
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>TIME-WAIT 是 TCP 挥手过程的一个状态。很多地方都对它有说明，这里只贴两个图唤起记忆。下面这个是 TCP 完整的状态图：</p>
+<img src="/2017/06/30/tcp-time-wait/TCP-State.png" alt="TCP 状态机" title="TCP 状态机">
+<p>图片来自：<a href="http://www.tcpipguide.com/free/t_TCPOperationalOverviewandtheTCPFiniteStateMachineF-2.htm" target="_blank" rel="external">http://www.tcpipguide.com/free/t_TCPOperationalOverviewandtheTCPFiniteStateMachineF-2.htm</a></p>
+<p>看到最下面有个 TIME-WAIT 状态。状态图可能看着不那么直观，可以看下面这个：</p>
+<img src="/2017/06/30/tcp-time-wait/TCP-Fin.png" alt="TCP 状态机" title="TCP 状态机">
+<p>图片来自：<a href="http://www.tcpipguide.com/free/t_TCPConnectionTermination-2.htm" target="_blank" rel="external">http://www.tcpipguide.com/free/t_TCPConnectionTermination-2.htm</a></p>
+<p>上面实际不一定是只有 Client 才能进入 TIME-WAIT 状态，而是谁发起 TCP 连接断开先发的 FIN，谁最终就进入 TIME-WAIT 状态。</p>
+<h2 id="TIME-WAIT-的作用"><a href="#TIME-WAIT-的作用" class="headerlink" title="TIME-WAIT 的作用"></a>TIME-WAIT 的作用</h2><ul>
+<li>避免上一个连接延迟到达的数据包被下一个连接错误接收。如下图所示：</li>
+</ul>
+<img src="/2017/06/30/tcp-time-wait/TIME-WAIT-Function.png" alt="TCP 状态机" title="TCP 状态机">
+<p>图片来自：<a href="https://vincent.bernat.im/en/blog/2014-tcp-time-wait-state-linux" target="_blank" rel="external">https://vincent.bernat.im/en/blog/2014-tcp-time-wait-state-linux</a></p>
+<p>虚线将两次连接分开，两次连接都使用的同一组 TCP Tuple，即 Source IP, Source Port, Destination IP, Destination Port 组合。第一次连接中 SEQ 为 3 的数据包出现了重发，第二次连接中刚好再次使用 SEQ 为 3 这个序号的时候，第一次连接中本来发丢(延迟)的 SEQ 为 3 的数据包在此时到达，就导致这个延迟了的 SEQ 为 3 的数据包被当做正确的数据而接收，之后如果还有 SEQ 为 3 的正常数据包到达会被接收方认为是重复数据包而直接丢弃，导致 TCP 连接接收的数据错误。</p>
+<p>这种错误可能看上去很难发生，因为必须 TCP Tuple 一致，并且 SEQ 号一致时才会发生，但在高速网络下发生的可能性会增大(因为 SEQ 号会很快被耗尽)，所以需要有个 TIME-WAIT 的存在减少上面这种情况的发生，并且 TIME-WAIT 的长度还要长一些， <a href="https://tools.ietf.org/html/rfc793" target="_blank" rel="external">RFC 793 - Transmission Control Protocol</a> 要求 TIME-WAIT 长度要大于两个 MSL (<a href="https://en.wikipedia.org/wiki/Maximum_segment_lifetime" target="_blank" rel="external">Maximum segment lifetime - Wikipedia</a>) 。MSL 是人为定下的值，就认为数据包在网络路由的时间不会超过这么长。等足两个 MSL 就是为了保证上图第二次连接建立的时候之前发丢的 SEQ 为 3 的数据包已经在网络中丢失，不可能再出现在第二次连接中。</p>
+<ul>
+<li>另一个作用是被动断开连接的一方，发出最后一个 FIN 之后进入 LAST ACK 状态。主动断开连接的一方在收到 FIN 之后回复 ACK，如果该 ACK 发丢了，被动断开连接的一方会一直处在 LAST ACK 状态，并在超时之后重发 FIN。主动断开连接的一方如果处在 TIME WAIT 状态，重复收到 FIN 后每次会重发 ACK。但如果 TIME WAIT 时间短，会进入 CLOSED 状态，此时再收到 FIN 就直接回复 RST 了。这个 RST 会导致被动断开连接的一方有个错误提示，虽然所有数据实际已经成功发到对端。</li>
+</ul>
+<h2 id="TIME-WAIT-带来的问题"><a href="#TIME-WAIT-带来的问题" class="headerlink" title="TIME WAIT 带来的问题"></a>TIME WAIT 带来的问题</h2><p>先引用一个名言：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">The TIME_WAIT state is our friend and is there to help us (i.e., to let old duplicate segments expire in the network). Instead of trying to avoid the state, we should understand it.</div></pre></td></tr></table></figure></p>
+<p>据说这话的是 W. Richard Stevens 说的。也就是说 TIME WAIT 可能会给我们带来一些问题，但我们还是不要把它当成敌人，当成一个异常状态想方设法的去破坏它的正常工作，而是去利用它，理解它，让它为我们所用。这里要说 TIME WAIT 的问题只是需要我们去理解它的副作用，不是说 TIME WAIT 真的就很邪恶很讨厌。</p>
+<p>TIME WAIT 带来的问题主要是三个：</p>
+<ol>
+<li>端口占用，导致新的连接可能没有可用的端口;</li>
+<li>TIME WAIT 状态的连接依然会占用系统内存;</li>
+<li>会带来一些 CPU 开销</li>
+</ol>
+<p>对于第一个问题可以考虑开启下面说的 tcp_tw_reuse 甚至 tcp_tw_recycle，也能调大 net.ipv4.ip_local_port_range 以获取更多的可用端口，还可以使用多个 IP 或开启多个 port 的方法来避免没有端口可用的情况。</p>
+<p>对于内存上的开销，进入 TIME WAIT 后应用层实际已经将连接相关信息销毁了，只是在 kernel 还维护有连接相关信息。正常状态下的 Socket 结构比较复杂，<a href="http://elixir.free-electrons.com/linux/latest/source/include/net/sock.h#L149" target="_blank" rel="external">可以看看这里</a>。Linux 为了减少 TIME WAIT 连接的开销，专门构造了更精简的 Socket 数据结构给 TIME WAIT 状态的连接用，参看<a href="http://elixir.free-electrons.com/linux/latest/source/include/linux/tcp.h￼#L397" target="_blank" rel="external">这里</a> 和<a href="http://elixir.free-electrons.com/linux/latest/source/include/net/inet_timewait_sock.h#L39" target="_blank" rel="external">这里</a>。可以看到 TIME WAIT 状态下一个连接在内核的数据结构最多百来字节，即使有 65535 个 TIME WAIT 的连接存在也占不了多少内存，几十 M 最多了。</p>
+<p>对于 CPU 的开销一般也不大，主要是在建立连接时查找一个<a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/inet_connection_sock.c#L282" target="_blank" rel="external">可用端口上的开销</a>。</p>
+<p>所以 TIME WAIT 带来的最主要的副作用就是会占用端口，而端口数量有限，可能导致无法创建新连接的情况。</p>
+<h2 id="减少-TIME-WAIT-占用端口的方法"><a href="#减少-TIME-WAIT-占用端口的方法" class="headerlink" title="减少 TIME WAIT 占用端口的方法"></a>减少 TIME WAIT 占用端口的方法</h2><h3 id="SO-LINGER"><a href="#SO-LINGER" class="headerlink" title="SO_LINGER"></a>SO_LINGER</h3><p>对于应用层来说调用 <code>send()</code> 后数据并没有实际写入网络，而是先放到一个 buffer 当中，之后慢慢的往网络上写。所以会出现应用层想要关闭一个连接时，连接的 buffer 内还有数据没写出去，需要等待这部分数据写出。调用 <code>close()</code> 后等待 buffer 内数据全部写出去的时间叫做 Linger Time。Linger Time 结束后开始正常的 TCP 挥手过程。</p>
+<p>从前面介绍能看到，正常的主动断开连接一定会进入 TIME WAIT 状态，但除了正常的连接关闭之外还有非正常的断开连接的方法，可以不让连接进入 TIME WAIT 状态。方法就是给 Socket 配置 SO_LIGNER，这样在调用 <code>close()</code> 关闭连接的时候主动断开连接一方不是等待 buffer 内数据发完之后再发送 FIN 而是根据 SO_LINGER 参数配置的超时时间，等到最多这个超时时间这么长后，如果连接 buffer 内还有数据就直接发送 RST 强制重置连接，对方会收到 Connection Reset by peer 的错误，同时会导致主动断开连接一方所有还未来得及发送的数据全部丢弃。如果还未到 SO_LINGER 配置的超时时间连接 buffer 内的数据就全部发完了，就还是发 FIN 走正常挥手逻辑，但这样主动断开连接一方还是会进入 TIME WAIT。所以如果主动断开连接时完全不想让连接进入 TIME WAIT 状态，可以直接将 SO_LINGER 设置为 0 ，这样调用 <code>close()</code> 后会直接发 RST，丢弃 buffer 内所有数据，并让连接直接进入 CLOSED 状态。</p>
+<p>从上面描述也能看出来其应用场景可能会比较狭窄。看到<a href="http://www.serverframework.com/asynchronousevents/2011/01/time-wait-and-its-design-implications-for-protocols-and-scalable-servers.html" target="_blank" rel="external">有地方</a>建议是说收到错误数据，或者连接超时的时候通过这种方式直接重置连接，避免有问题的连接还进入 TIME WAIT 状态。</p>
+<h3 id="tcp-tw-reuse、-tcp-tw-recycle-配置和-TCP-Timestamp"><a href="#tcp-tw-reuse、-tcp-tw-recycle-配置和-TCP-Timestamp" class="headerlink" title="tcp_tw_reuse、 tcp_tw_recycle 配置和 TCP Timestamp"></a>tcp_tw_reuse、 tcp_tw_recycle 配置和 TCP Timestamp</h3><p>为了介绍这两个配置，首先需要介绍一下 TCP Timestamp 机制。</p>
+<p><a href="https://tools.ietf.org/html/rfc1323" target="_blank" rel="external">RFC 1323</a> 和 <a href="https://tools.ietf.org/html/rfc7323" target="_blank" rel="external">RFC 7323</a> 提出过一个优化，在 TCP option 中带上两个 timestamp 值：<br>TCP Timestamps option (TSopt):<br>Kind: 8<br>Length: 10 bytes<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div></pre></td><td class="code"><pre><div class="line">+-------+-------+---------------------+---------------------+</div><div class="line">|Kind=8 |  10   |   TS Value (TSval)  |TS Echo Reply (TSecr)|</div><div class="line">+-------+-------+---------------------+---------------------+</div><div class="line">    1       1              4                     4</div></pre></td></tr></table></figure></p>
+<p>TCP 握手时，通信双方如果都带有 TCP Timestamp 则表示双方都支持 TCP Timestamp 机制，之后每个 TCP 包都需要将自己当前机器时间带在 TSval 中，并且在每次收到对方 TCP 包做 ACK 回复的时候将对方的 TSval 作为 ACK 中 TSecr 字段返回给对方。这样通信双方就能在收到 ACK 的时候读取 TSecr 值并根据当前自己机器时间计算 TCP Round Trip Time，从而根据网络状况动态调整 TCP 超时时间，以提高 TCP 性能。<em>请注意这个 option 虽然叫做 Timestamp 但不是真实日期时间，而是一般跟操作系统运行时间相关的一个持续递增的值</em>。更进一步信息请看 RFC 的链接。</p>
+<p>除了对 TCP Round Trip 时间做测量外，这个 timestamp 还有个功能就是避免重复收到数据包影响正常的 TCP 连接，这个功能叫做 PAWS，在上面 RFC 中也有介绍。</p>
+<h4 id="PAWS-Protection-Against-Wrapped-Sequences"><a href="#PAWS-Protection-Against-Wrapped-Sequences" class="headerlink" title="PAWS (Protection Against Wrapped Sequences)"></a>PAWS (Protection Against Wrapped Sequences)</h4><p>从 PAWS 的全名上大概能猜想出来它是干什么的。正常来说每个 TCP 包都会有自己唯一的 SEQ，出现 TCP 数据包重传的时候会复用 SEQ 号，这样接收方能通过 SEQ 号来判断数据包的唯一性，也能在重复收到某个数据包的时候判断数据是不是重传的。但是 TCP 这个 SEQ 号是有限的，一共 32 bit，SEQ 开始是递增，溢出之后从 0 开始再次依次递增。所以当 SEQ 号出现溢出后单纯通过 SEQ 号无法标识数据包的唯一性，某个数据包延迟或因重发而延迟时可能导致连接传递的数据被破坏，比如：</p>
+<img src="/2017/06/30/tcp-time-wait/TCP-Delay.png" alt="TCP 状态机" title="TCP 状态机">
+<p>图片来自:<a href="http://www.sdnlab.com/17530.html" target="_blank" rel="external">Linux服务器丢包故障的解决思路及引申的TCP/IP协议栈理论 | SDNLAB | 专注网络创新技术</a></p>
+<p>上图 A 数据包出现了重传，并在 SEQ 号耗尽再次从 A 递增时，第一次发的 A 数据包延迟到达了 Server，这种情况下如果没有别的机制来保证，Server 会认为延迟到达的 A 数据包是正确的而接收，反而是将正常的第三次发的 SEQ 为 A 的数据包丢弃，造成数据传输错误。PAWS 就是为了避免这个问题而产生的。在开启 Timestamp 机制情况下，一台机器发的所有 TCP 包的 TSval 都是单调递增的，PAWS 要求连接双方维护最近一次收到的数据包的 TSval 值，每收到一个新数据包都会读取数据包中的 TSval 值跟 Recent TSval 值做比较，如果发现收到的数据包 TSval 没有递增，则直接丢弃这个数据包。对于上面图中的例子有了 PAWS 机制就能做到在收到 Delay 到达的 A 号数据包时，识别出它是个过期的数据包而将其丢掉。<a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_metrics.c#L576" target="_blank" rel="external">这里是 Linux 一个做 PAWS 检查的函数</a>。</p>
+<p>TCP Timestamp 就像是 SEQ 号的扩展一样，用以在 SEQ 号相同时候判断两个数据包是否相同以及他们的先后关系。TCP Timestamp 时间跟系统运行时间相关，但并不完全对应，也不需要 TCP 通信双方时间一致。Timestamp 的起跳粒度可以由系统实现决定，粒度不能太粗也不能太细。粒度最粗至少要保证 SEQ 耗尽的时候 Timestamp 跳了一次，从而在 SEQ 号重复的时候能通过 Timestamp 将数据包区分开。Timestamp 跳的粒度越细，能支持的最大发送速度越高。TCP SEQ 是 32 bit，全部耗尽需要发送 2^32 字节的数据（<a href="https://tools.ietf.org/html/rfc7323#section-5.4" target="_blank" rel="external">RFC 7323 说是 2^31 字节数据</a>，我还没弄明白为什么不是 2^32)，如果 Timestamp 一分钟跳一次，那支持的最高发送速度是一分钟发完 2^32 字节数据；如果 Timestamp 一秒钟跳一次，那支持的最高发送速度是一秒钟发完 2^32 字节数据。另外，Timestamp 因为担负着测量 RTT 的职责，过粗的粒度也会降低探测精度，不能达到效果。</p>
+<p>但是 Timestamp 本身也是有限的，一共 32 bit，Timestamp 跳的粒度越细，跳的越快，被耗尽的速度也越快。越短时间被耗尽越会出现只靠 SEQ 来判断数据包唯一性的场景。所以一般推荐 Timestamp 是 1ms 或 1s 一跳。假若是 1ms 一跳的话能支持最高 8 Tbps 的传输速度，也能在长达 24.8 天才会被耗尽。只要 MSL (<a href="https://en.wikipedia.org/wiki/Maximum_segment_lifetime" target="_blank" rel="external">Maximum segment lifetime - Wikipedia</a>) 小于 24.8 天，通过 TCP Timestamp 机制就能拒绝同一个连接上 SEQ 相同的重复数据包。MSL 大于 24.8 天几乎不可能，一个 Delay 的数据包在 24.8 天后到达接收方，该数据包的 SEQ 、Timestamp 又恰好和一个正常数据包相同，这个概率非常的小。MSL 相关可以参看<a href="http://www.rfc-editor.org/rfc/rfc793.txt" target="_blank" rel="external">RFC 793</a> 。</p>
+<p>TCP Timestamp 机制开启之后 PAWS 会自动开启，控制 TCP Timestamp 的配置为 <code>net.ipv4.tcp_timestamps</code> 一般现在 Linux 系统都是开启的。因为能提升 TCP 连接性能，付出的代价相对又少。该配置看着叫 ipv4 但对 ipv6 一样有效。</p>
+<p>Linux 上有几个跟 PAWS 相关的统计信息：<br>    LINUX_MIB_PAWSPASSIVEREJECTED,      /<em> PAWSPassiveRejected </em>/<br>    LINUX_MIB_PAWSACTIVEREJECTED,       /<em> PAWSActiveRejected </em>/<br>    LINUX_MIB_PAWSESTABREJECTED,        /<em> PAWSEstabRejected </em>/</p>
+<p>PAWS passive rejected 是 tcp_tw_recycle 开启后，收到 Client 的 SYN 时，因为 SYN 内的 Timestamp 没有通过 PAWS 检测而被拒绝的 SYN 数据包数量。这个稍后再说。<br>PAWS active rejected 是 Client 发出 SYN 后，收到 Server 的 SYN/ACK 但 SYN/ACK 中的 Timestamp 没有通过 PAWS 检测而被拒绝的 SYN/ACK 数据包数量。<br>PAWS established rejected 是正常建立连接后，因为数据包没有通过 PAWS 检测而被拒绝的数据包数量。</p>
+<p>这三个定义在一起的，在<a href="http://elixir.free-electrons.com/linux/latest/source/include/uapi/linux/snmp.h#L180" target="_blank" rel="external">这里</a>，下面会再次介绍这些计数是什么场景下被记录的。</p>
+<p>目前来看 netstat -s 中只展示了 PAWS established rejected 的值，另外两个没展示，需要到 /proc/net/netstat 中看：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">358306 packets rejects in established connections because of timestamp</div></pre></td></tr></table></figure></p>
+<h4 id="net-ipv4-tcp-tw-reuse"><a href="#net-ipv4-tcp-tw-reuse" class="headerlink" title="net.ipv4.tcp_tw_reuse"></a>net.ipv4.tcp_tw_reuse</h4><p>需要注意的是这里说的 net.ipv4.tcp_tw_reuse 和下面说的 net.ipv4.tcp_tw_recycle 都是虽然名字里有 ipv4 但对 ipv6 同样生效。</p>
+<p>只有开启了 PAWS 机制之后开启 net.ipv4.tcp_tw_reuse 才有用，并且仅对 outgoing 的连接有效，即仅对 Client 有效。Linux 中使用到 tcp_tw_reuse 的地方在<a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_ipv4.c#L111" target="_blank" rel="external">这里</a>。<a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/inet_hashtables.c#L315" target="_blank" rel="external">其作用是在 Client 连 Server 的时候如果已经没有端口可以使用</a>，并且在 Client 端找到个处在 Time Wait 状态的和 Server 的连接，<a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_ipv4.c#L111" target="_blank" rel="external">只要当前时间和该连接最后一次收到数据的时间差值超过 1s</a>，就能立即复用该连接，不用等待连接 Time Wait 结束。</p>
+<p>前面说过 Time Wait 有两个作用，一个是避免同一个 TCP Tuple 上前一个连接的数据包错误的被后一个连接接收。因为有了 PAWS 机制，TCP 收到的数据会检查 TSval 是否大于最近一次收到数据的 TSval，所以这种情况不会发生。旧连接的数据包到达接收方后因为 PAWS 检测不通过会直接被丢弃，并更新 LINUX_MIB_PAWSESTABREJECTED 计数。</p>
+<p>另一个作用是避免主动断开连接一方最后一个回复的 ACK 丢失而被动断开连接一方一直处在 LAST ACK 状态，超时后会再次发 FIN 到主动断开连接一方。此时如果主动断开连接一方不在 Time Wait 会触发主动断开连接一方发出 RST 让被动连接一方出现一个 Connection reset by peer 的报错。不过这个实际上还好，数据至少都发完了。如果被动断开连接一方还未因超时而重发 FIN 就收到主动断开连接一方因为 tcp_tw_reuse 提前从 TIME WAIT 状态退出而发出的 SYN，被动连接一方会立即重发 FIN，主动连接一方收到 FIN 后回复 RST，之后再重发 SYN 开始正常的 TCP 握手。后一个过程图如下：</p>
+<img src="/2017/06/30/tcp-time-wait/tcp_tw_reuse.png" alt="TCP 状态机" title="TCP 状态机">
+<p>图片来自：<a href="https://vincent.bernat.im/en/blog/2014-tcp-time-wait-state-linux" target="_blank" rel="external">https://vincent.bernat.im/en/blog/2014-tcp-time-wait-state-linux</a></p>
+<p><a href="https://vincent.bernat.im/en/blog/2014-tcp-time-wait-state-linux" target="_blank" rel="external">这篇文章</a> 说没有开启 TCP Timestamp 时，被动断开连接一方处在 LAST_ACK 状态，收到 SYN 后会回复 RST；开启了 TCP Timestamp 之后，被动连接一方处在 LAST_ACK 状态收到 SYN 会丢弃这个 SYN，在 FIN 超时后再次发 FIN, ACK，这里我有些疑惑。不明白为什么 TCP Timestamp 开启之后处在 LAST ACK 状态的一方就会默认丢弃对方发来的 SYN。PAWS 只有 Timestamp 不和要求时才会丢消息，但同一台机器上没有重启的话 TSval 是逐步递增的，<a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_ipv4.c#L130" target="_blank" rel="external">SEQ 号也是在原来 TIME WAIT 时存下的 SEQ 号基础上加一个偏移值得到</a>，按说没有理由会自动丢弃 SYN 的。</p>
+<p>还一个要注意到的是 tcp_tw_reuse 在 reuse 连接的时候<a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_ipv4.c#L133" target="_blank" rel="external">新创建的连接会复用之前连接保存的最近一次收到数据的 Timestamp</a>。这个是与下面要说的 tcp_tw_recycle  的不同点，也是为什么 tcp_tw_reuse 在使用了 NAT 的网络下是安全的，而 tcp_tw_recycle 在使用了 NAT 的网络下是不安全的。因为 tcp_tw_reuse 记录的最近一次收到数据的 Timestamp 是针对 Per-Connection 的，而 tcp_tw_recycle 记录的最近一次收到数据的 Timestamp 是 Per-Host 的，在 NAT 存在的情况下同一个 Host 后面有多少机器就说不清了，所以会导致问题，这个在下面描述 tcp_tw_recycle 的时候再继续说。</p>
+<p>从上面描述来看 tcp_tw_reuse 还是比较安全的，一般是建议开启。不过该配置对 Server 没有用，因为只有 outgoing 的连接才会使用。每次 reuse 一个连接后会将 TWRecycled 计数加一，通过 netstat -s 能看到：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">7212 time wait sockets recycled by time stamp</div></pre></td></tr></table></figure></p>
+<p>虽然叫做 TWRecycled 但实际它指的是 reuse 的连接数，不是下面要说的 recycled 的连接数。</p>
+<h4 id="net-ipv4-tcp-tw-recycle"><a href="#net-ipv4-tcp-tw-recycle" class="headerlink" title="net.ipv4.tcp_tw_recycle"></a>net.ipv4.tcp_tw_recycle</h4><p>该配置也是要基于 TCP Timestamp，单独开启 tcp_tw_recycle 没有效果。相对 tcp_tw_reuse 来说 tcp_tw_recycle 是个更激进的参数，这个参数在 Linux 的使用参看：<br><a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_input.c#L6348" target="_blank" rel="external">linux/net/ipv4/tcp_input.c - Elixir - Free Electrons</a><br><a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_minisocks.c#L91" target="_blank" rel="external">linux/net/ipv4/tcp_minisocks.c - Elixir - Free Electrons</a><br><a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_ipv4.c#L144" target="_blank" rel="external">linux/net/ipv4/tcp_ipv4.c - Elixir - Free Electrons</a></p>
+<p>从<a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_minisocks.c#L91" target="_blank" rel="external">这里</a>能看出主动断开连接一方在收到 FIN 进入 TIME WAIT 时，如果 recycle 开启，TIME WAIT 长度只有一个 RTO 这个正常来说是会大大低于 TCP_TIMEWAIT_LEN 的。 这里就说明 tcp_tw_recycle 是对 outgoing 和 incoming 的连接都会产生效果，不管连接是谁先发起创建的，只要是开启 tcp_tw_recycle 的机器先断开连接，其就会进入 TIME WAIT 状态，并且会受到 tcp_tw_recycle 的影响，大幅度缩短 TIME WAIT 的时间。</p>
+<p>跟 tcp_tw_reuse 一样，由于 PAWS 机制的存在，缩短 TIME WAIT 后同一个 TCP Tuple 上前一个连接的数据包不会被后一个连接错误的接收。TIME WAIT 另一个要处理的 LAST ACK 的问题跟 tcp_tw_reuse 也一样，不会产生很大的问题，新的连接依然能正常建立，旧连接的数据也能保证都发到对方，只是旧连接上可能会产生一个 Connection reset by peer 的错误。那 tcp_tw_recycle 是不是就是安全的呢？为什么那么多人都不推荐开启这个机制呢？</p>
+<p>原因是前面说过 tcp_tw_reuse 新建立的连接会复用前一次连接保存的 Recent TSval 即最后一次收到数据的 Timestamp 值，这个值是 Per-Connection 的，即使有 NAT 的存在，也不会产生问题。比如当前机器是 A 要和 B C D 三台机器建立连接，假设 B C D 三台机器都在 NAT 之后，对 A 来说 B C D 使用的是相同的 IP 或者称为 Host。B C D 三台机器因为启动时间不同，A 与他们建立连接之后他们发来的 TSval 都不相同，有前有后。因为 A 是以 Per-Connection 的保存 TSval ，不会出现比如因为 C 机器时间比 B 晚，A 收到 B 的一条消息之后再收到 C 的消息而丢弃 C 的数据的情况。因为在 A 上为 B C D 三台机器分别保存了 Recent TSval，他们之间不会混淆。</p>
+<p>但是对于 tcp_tw_recycle 来说，TIME WAIT 之后连接信息快速的被回收，Per-Connection 保存的 TSval 记录就被清除了，取而代之的是另一个 Per-Host 的 TSval cache。这样在 NAT 存在的场景下就有问题了，还是上面的例子，B C D 在同一个 NAT 之后，具有相同的 Host，B 先跟 A 建立连接，此时 Per-Host cache 更新为 B 的机器时间，之后 C 来跟 A 建立连接，读取 Per-Host Cache 后发现 C 的 SYN 中 TSval 比 Cache 的 TSval 时间要早，<a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_input.c#L6348" target="_blank" rel="external">于是直接默默丢弃 C 的 SYN</a>。这种情况会更新 LINUX_MIB_PAWSPASSIVEREJECTED 从而在 <code>/proc/net/netstat</code> 下的 PAWSPassive 看这个计数。在网上看到好些地方说到这个问题的时候都说会更新 PAWSEstab 计数，这是不对的。</p>
+<p>除了上面场景中 A 会丢弃 C 的 SYN 之外，还有别的引起问题的场景。比如 A 跟 B 建立了连接，Per-Host TSval 更新为 B 的时间，之后又要去跟 C 建立连接，<a href="http://elixir.free-electrons.com/linux/latest/source/net/ipv4/tcp_ipv4.c#L208" target="_blank" rel="external">A 发出 SYN 时会更新该连接的 Recent TSval 为缓存的 Per-Host TSval 时间</a>，即 B 的时间。因为 C 不会校验 A 发来的 SYN 的时间，所以 C 会正常回复 SYN//ACK 给 A，但 SYN//ACK 到达 A 之后，因为 SYN//ACK 带着 C 的 TSval，其时间晚于 B 的时间，导致 A 直接丢弃 C 发来的 SYN/ACK，并更新 LINUX_MIB_PAWSACTIVEREJECTED 计数，该计数能在 <code>/proc/net/netstat</code> 下的  PAWSActive 看到。</p>
+<p>所以，tcp_tw_recycle 是不推荐开启的，因为 NAT 在网络上大量的存在，配合 tcp_tw_recycle 会出现问题。</p>
+<h2 id="net-ipv4-tcp-max-tw-buckets-是什么"><a href="#net-ipv4-tcp-max-tw-buckets-是什么" class="headerlink" title="net.ipv4.tcp_max_tw_buckets 是什么"></a>net.ipv4.tcp_max_tw_buckets 是什么</h2><p>用于限制系统内处在 TIME WAIT 的最大连接数量，当 TIME WAIT 的连接超过限制之后连接会直接被关闭进入 CLOSED 状态，并会打印日志：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">TCP time wait bucket table overflow</div></pre></td></tr></table></figure></p>
+<p>可以看出这个限制有些暴力，得尽量去避免。还是之前的话，TIME WAIT 是有自己的作用的，暴力干掉它对我们并没有好处。</p>
+<p>tcp_max_tw_buckets 这个限制主要是控制 TIME WAIT 连接占用的资源数，包括内存、CPU 和端口资源。避免 denial-of-service 攻击。比如端口全部被占用处在 TIME WAIT 状态，可能会出现没有多余的端口来建立新的连接。</p>
+<h2 id="SO-REUSEADDR-是什么-SO-REUSEPORT-是什么"><a href="#SO-REUSEADDR-是什么-SO-REUSEPORT-是什么" class="headerlink" title="SO_REUSEADDR 是什么, SO_REUSEPORT 是什么"></a>SO_REUSEADDR 是什么, SO_REUSEPORT 是什么</h2><p>看完上面内容之后可能会和我一样产生这个疑问，因为这两个从名字上看上去跟 tcp_tw_reuse 很像。</p>
+<p>关于 SO_REUSEADDR 和 SO_REUSEPORT <a href="https://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t" target="_blank" rel="external">这篇文章</a>介绍的特别好，强烈建议一看。唯一是里面关于 TIME WAIT 内容个人认为是不正确的，想先说明一下，避免以后自己再看这个文章的时候搞混淆。他说：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">That&apos;s why a socket that still has data to send will go into a state called TIME_WAIT when you close it. In that state it will wait until all pending data has been successfully sent or until a timeout is hit, in which case the socket is closed forcefully.</div></pre></td></tr></table></figure></p>
+<p>实际上连接进入 TIME WAIT 之后是不可能再有数据发出的，因为能进入 TIME WAIT 一定是已经收到了对方的 FIN，此时对方期待的只有 ACK，发应用层数据会引起对方回复 RST。</p>
+<p>还有这里：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">The amount of time the kernel will wait before it closes the socket, regardless if it still has pending send data or not, is called the Linger Time. The Linger Time is globally configurable on most systems and by default rather long (two minutes is a common value you will find on many systems). It is also configurable per socket using the socket option SO_LINGER which can be used to make the timeout shorter or longer, and even to disable it completely.</div></pre></td></tr></table></figure></p>
+<p>关于 Linger Time 的描述跟 TIME WAIT 混淆了，Linger Time 并不是全局配置的，最长也不是 2 分钟，这个都是 TIME WAIT 的长度。Linger TIme 确实也有默认长度，但是个非常大的值，<a href="http://elixir.free-electrons.com/linux/latest/source/net/core/sock.c#L787" target="_blank" rel="external">参看这里</a>。所以基本能认为不设置 SO_LINGER 的话，<code>close()</code> 调用后会一直等到 buffer 内数据发完才会开始断开连接流程。</p>
+<p>但是瑕不掩瑜，这篇文章把 SO_REUSEADDR 和 SO_REUSEPORT 讲的很清楚。上面介绍过的 tcp_tw_reuse 和 tcp_tw_recycle 都是内核级参数，使用之后会在整个系统产生作用，所有创建的连接都受到影响。SO_REUSEADDR 和 SO_REUSEPORT 都是单个连接级的参数，使用后只能对单个连接产生影响，不是整个系统级别的。</p>
+<p>SO_REUSEADDR 有两个作用：</p>
+<ol>
+<li><code>bind()</code> socket 时可以绑定 “any address” IPv4 下是 <code>0.0.0.0</code> 或在 IPv6 下是<code>::</code>。SO_REUSEADDR 不开启的话，这个 any address 会和机器具体使用的 IP 冲突，如果绑定的端口一致会报错。比如本地有两个网卡，IP 分别是 192.168.0.1 和 10.0.0.1。如果不开启 SO_REUSEADDR，绑定 0.0.0.0 的某个端口比如 21 之后，再想绑定某个具体的 IP 192.168.0.1 的 21 端口就不允许了。而开启 SO_REUSEADDR 之后除非是 IP 和 Port 都被绑定过才会报错。有个表：</li>
+</ol>
+<img src="/2017/06/30/tcp-time-wait/so-reuseaddr.png" alt="TCP 状态机" title="TCP 状态机">
+<p>图片来自: <a href="https://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t" target="_blank" rel="external">https://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t</a></p>
+<ol>
+<li>另一个作用是当连接主动断开后进入 TIME WAIT 状态，不开启 SO_REUSEADDR 的话，TIME WAIT 状态下连接的 IP 和 Port 也是被占用的，同一个 IP 和 Port 不能再次被 bind。但是开启 SO_REUSEADDR ，连接进入 TIME WAIT 后它使用的 IP 和 Port 能再次被应用 bind。bind 时会忽略同一个 IP 和 Port 的连接是否在 TIME WAIT 状态。</li>
+</ol>
+<h2 id="参考文献"><a href="#参考文献" class="headerlink" title="参考文献"></a>参考文献</h2><ol>
+<li>有很多参考了这篇文章：<a href="https://vincent.bernat.im/en/blog/2014-tcp-time-wait-state-linux" target="_blank" rel="external">Coping with the TCP TIME-WAIT state on busy Linux servers | Vincent Bernat</a></li>
+<li>TCP Timestamp 、PAWS 相关主要参考了 <a href="https://tools.ietf.org/html/rfc1323" target="_blank" rel="external">RFC 1323</a>(已被 RFC 7323 取代)、<a href="https://tools.ietf.org/html/rfc7323" target="_blank" rel="external">RFC 7323</a>、<a href="https://tools.ietf.org/html/rfc6191" target="_blank" rel="external">RFC 6191</a></li>
+<li><a href="http://www.serverframework.com/asynchronousevents/2011/01/time-wait-and-its-design-implications-for-protocols-and-scalable-servers.html" target="_blank" rel="external">这个</a>虽然和 1 很多内容重复，但能用来相互印证，至少在未开启 TCP Timestamp 机制时被断开连接一方处在 LAST ACK 状态又没收到 ACK 的处理方式说的不一样 </li>
+<li><a href="https://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t" target="_blank" rel="external">linux - Socket options SO_REUSEADDR and SO_REUSEPORT, how do they differ? Do they mean the same across all major operating systems? - Stack Overflow</a></li>
+<li><a href="https://stackoverflow.com/questions/410616/increasing-the-maximum-number-of-tcp-ip-connections-in-linux" target="_blank" rel="external">https://stackoverflow.com/questions/410616/increasing-the-maximum-number-of-tcp-ip-connections-in-linux</a></li>
+<li><a href="https://stackoverflow.com/questions/8893888/dropping-of-connections-with-tcp-tw-recycle" target="_blank" rel="external">linux - Dropping of connections with tcp_tw_recycle - Stack Overflow</a></li>
+<li><a href="http://www.sdnlab.com/17530.html" target="_blank" rel="external">Linux服务器丢包故障的解决思路及引申的TCP/IP协议栈理论 | SDNLAB | 专注网络创新技术</a></li>
+<li><a href="http://troy.yort.com/improve-linux-tcp-tw-recycle-man-page-entry/" target="_blank" rel="external">Improve Linux tcp_tw_recycle man page entry - Troy Davis, Seattle</a></li>
+<li><a href="https://idea.popcount.org/2014-04-03-bind-before-connect/" target="_blank" rel="external">https://idea.popcount.org/2014-04-03-bind-before-connect/</a></li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/" data-id="cj4j1gqf700041nwxqkqasndf" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2017/05/18/tcp-backlog/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">TCP Backlog</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Bug/">Bug</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Network/">Network</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP/">TCP</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Algorithm/" style="font-size: 10px;">Algorithm</a> <a href="/tags/Bug/" style="font-size: 15px;">Bug</a> <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a> <a href="/tags/Network/" style="font-size: 10px;">Network</a> <a href="/tags/TCP/" style="font-size: 10px;">TCP</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/06/">六月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">五月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">四月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">三月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">七月 2016</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2017/06/30/tcp-time-wait/">TCP TIME-WAIT</a>
+          </li>
+        
+          <li>
+            <a href="/2017/05/18/tcp-backlog/">TCP Backlog</a>
+          </li>
+        
+          <li>
+            <a href="/2017/04/14/tls-sni/">一次 TLS SNI 问题</a>
+          </li>
+        
+          <li>
+            <a href="/2017/04/01/basic-concurrent-queue/">普通队列改造为并发队列</a>
+          </li>
+        
+          <li>
+            <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2017 ylgrgyq<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+  </div>
+</body>
+</html>

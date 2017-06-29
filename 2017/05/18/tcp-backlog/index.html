@@ -3,23 +3,21 @@
 <head>
   <meta charset="utf-8">
   
-  <title>TCP Backlog | Ylgrgyq Blog</title>
+  <title>TCP Backlog | A Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="这篇文章对 TCP Backlog 的说明写的特别好，How TCP backlog works in Linux 强烈建议看一看，希望这篇文章的地址不要变化，方便以后回顾。
-Linux 上 TCP 握手的时候为每个独立进程维护了两个队列，一个是 Server 在收到 Client 的 SYN 并回复 SYN/ACK 之后，会将连接放入一个 incomplete sockets queue，这个队">
+  <meta name="description" content="这篇文章对 TCP Backlog 的说明写的特别好，How TCP backlog works in Linux 强烈建议看一看，希望这篇文章的地址不要变化，方便以后回顾。 Linux 上 TCP 握手的时候为每个独立进程维护了两个队列，一个是 Server 在收到 Client 的 SYN 并回复 SYN/ACK 之后，会将连接放入一个 incomplete sockets queue，这个队">
+<meta name="keywords" content="Network,TCP">
 <meta property="og:type" content="article">
 <meta property="og:title" content="TCP Backlog">
 <meta property="og:url" content="http://ylgrgyq.github.io/2017/05/18/tcp-backlog/index.html">
-<meta property="og:site_name" content="Ylgrgyq Blog">
-<meta property="og:description" content="这篇文章对 TCP Backlog 的说明写的特别好，How TCP backlog works in Linux 强烈建议看一看，希望这篇文章的地址不要变化，方便以后回顾。
-Linux 上 TCP 握手的时候为每个独立进程维护了两个队列，一个是 Server 在收到 Client 的 SYN 并回复 SYN/ACK 之后，会将连接放入一个 incomplete sockets queue，这个队">
+<meta property="og:site_name" content="A Blog">
+<meta property="og:description" content="这篇文章对 TCP Backlog 的说明写的特别好，How TCP backlog works in Linux 强烈建议看一看，希望这篇文章的地址不要变化，方便以后回顾。 Linux 上 TCP 握手的时候为每个独立进程维护了两个队列，一个是 Server 在收到 Client 的 SYN 并回复 SYN/ACK 之后，会将连接放入一个 incomplete sockets queue，这个队">
 <meta property="og:updated_time" content="2017-06-12T02:04:23.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="TCP Backlog">
-<meta name="twitter:description" content="这篇文章对 TCP Backlog 的说明写的特别好，How TCP backlog works in Linux 强烈建议看一看，希望这篇文章的地址不要变化，方便以后回顾。
-Linux 上 TCP 握手的时候为每个独立进程维护了两个队列，一个是 Server 在收到 Client 的 SYN 并回复 SYN/ACK 之后，会将连接放入一个 incomplete sockets queue，这个队">
+<meta name="twitter:description" content="这篇文章对 TCP Backlog 的说明写的特别好，How TCP backlog works in Linux 强烈建议看一看，希望这篇文章的地址不要变化，方便以后回顾。 Linux 上 TCP 握手的时候为每个独立进程维护了两个队列，一个是 Server 在收到 Client 的 SYN 并回复 SYN/ACK 之后，会将连接放入一个 incomplete sockets queue，这个队">
   
-    <link rel="alternate" href="/atom.xml" title="Ylgrgyq Blog" type="application/atom+xml">
+    <link rel="alternate" href="/atom.xml" title="A Blog" type="application/atom+xml">
   
   
     <link rel="icon" href="/favicon.png">
@@ -53,8 +51,12 @@ ga('send', 'pageview');
   <div id="header-outer" class="outer">
     <div id="header-title" class="inner">
       <h1 id="logo-wrap">
-        <a href="/" id="logo">Ylgrgyq Blog</a>
+        <a href="/" id="logo">A Blog</a>
       </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">by ylgrgyq</a>
+        </h2>
       
     </div>
     <div id="header-inner" class="inner">
@@ -70,10 +72,10 @@ ga('send', 'pageview');
         
           <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
         
-        <a id="nav-search-btn" class="nav-icon" title="Zoeken"></a>
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
       </nav>
       <div id="search-form-wrap">
-        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" results="0" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://ylgrgyq.github.io"></form>
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://ylgrgyq.github.io"></form>
       </div>
     </div>
   </div>
@@ -141,7 +143,7 @@ ga('send', 'pageview');
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ylgrgyq.github.io/2017/05/18/tcp-backlog/" data-id="cj3tfqo5j0000epwxaocs85ld" class="article-share-link">Delen</a>
+      <a data-url="http://ylgrgyq.github.io/2017/05/18/tcp-backlog/" data-id="cj4j1gqf000011nwx4q718j5k" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Network/">Network</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/TCP/">TCP</a></li></ul>
@@ -152,9 +154,18 @@ ga('send', 'pageview');
     
 <nav id="article-nav">
   
+    <a href="/2017/06/30/tcp-time-wait/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          TCP TIME-WAIT
+        
+      </div>
+    </a>
+  
   
     <a href="/2017/04/14/tls-sni/" id="article-nav-older" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Ouder</strong>
+      <strong class="article-nav-caption">Older</strong>
       <div class="article-nav-title">一次 TLS SNI 问题</div>
     </a>
   
@@ -172,7 +183,7 @@ ga('send', 'pageview');
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Labels</h3>
+    <h3 class="widget-title">标签</h3>
     <div class="widget">
       <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Bug/">Bug</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Network/">Network</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP/">TCP</a></li></ul>
     </div>
@@ -182,7 +193,7 @@ ga('send', 'pageview');
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Tag Cloud</h3>
+    <h3 class="widget-title">标签云</h3>
     <div class="widget tagcloud">
       <a href="/tags/Algorithm/" style="font-size: 10px;">Algorithm</a> <a href="/tags/Bug/" style="font-size: 15px;">Bug</a> <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a> <a href="/tags/Network/" style="font-size: 10px;">Network</a> <a href="/tags/TCP/" style="font-size: 10px;">TCP</a>
     </div>
@@ -191,9 +202,9 @@ ga('send', 'pageview');
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Archieven</h3>
+    <h3 class="widget-title">归档</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">五月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">四月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">三月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">七月 2016</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/06/">六月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/05/">五月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/04/">四月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/03/">三月 2017</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/07/">七月 2016</a></li></ul>
     </div>
   </div>
 
@@ -201,9 +212,13 @@ ga('send', 'pageview');
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Recente berichten</h3>
+    <h3 class="widget-title">最新文章</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2017/06/30/tcp-time-wait/">TCP TIME-WAIT</a>
+          </li>
         
           <li>
             <a href="/2017/05/18/tcp-backlog/">TCP Backlog</a>
@@ -219,10 +234,6 @@ ga('send', 'pageview');
         
           <li>
             <a href="/2017/03/27/persistent-queue/">不可变队列的实现</a>
-          </li>
-        
-          <li>
-            <a href="/2016/07/17/found-a-bug-in-netty/">追踪 Netty 异常占用堆外内存的经验分享</a>
           </li>
         
       </ul>
