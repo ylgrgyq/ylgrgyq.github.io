@@ -18,7 +18,7 @@
 <meta property="og:image" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/TCP-Delay.png">
 <meta property="og:image" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/tcp_tw_reuse.png">
 <meta property="og:image" content="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/so-reuseaddr.png">
-<meta property="og:updated_time" content="2017-06-30T06:01:16.000Z">
+<meta property="og:updated_time" content="2017-06-30T13:52:43.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="TCP TIME-WAIT">
 <meta name="twitter:description" content="TIME-WAIT 是 TCP 挥手过程的一个状态。很多地方都对它有说明，这里只贴两个图唤起记忆。下面是 TCP 完整的状态图：  看到最下面有个 TIME-WAIT 状态。状态图可能看着不那么直观，可以看这个：  上面实际不一定是只有 Client 才能进入 TIME-WAIT 状态，而是谁发起 TCP 连接断开先发的 FIN，谁最终就进入 TIME-WAIT 状态。 TIME-WAIT 的作用">
@@ -77,9 +77,9 @@ ga('send', 'pageview');
       </nav>
       <nav id="sub-nav">
         
-          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="Flux RSS"></a>
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
         
-        <a id="nav-search-btn" class="nav-icon" title="Rechercher"></a>
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
       </nav>
       <div id="search-form-wrap">
         <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://ylgrgyq.github.io"></form>
@@ -130,7 +130,7 @@ ga('send', 'pageview');
 <li>会带来一些 CPU 开销</li>
 </ol>
 <p>对于第一个问题可以考虑开启下面说的 tcp_tw_reuse 甚至 tcp_tw_recycle，也能调大 net.ipv4.ip_local_port_range 以获取更多的可用端口，还可以使用多个 IP 或 Server 开启多个 port 的方法来避免没有端口可用的情况。</p>
-<p>对于内存上的开销，进入 TIME WAIT 后应用层实际已经将连接相关信息销毁了，只是在 kernel 还维护有连接相关信息，所以内存占用只发生在 kernel 内。正常状态下的 Socket 结构比较复杂，<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/include/linux/tcp.h#L144" target="_blank" rel="external">可以看看这里 struct tcp_sock</a>，它里面使用的是<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/include/net/inet_connection_sock.h#L88" target="_blank" rel="external">struct inet_connection_sock</a>。Linux 为了减少 TIME WAIT 连接的开销，专门构造了更精简的 Socket 数据结构给进入 TIME WAIT 状态的连接用，参看<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/include/linux/tcp.h#L397" target="_blank" rel="external">这里 struct tcp_timewait_sock</a> ，它里面用的是<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/include/net/inet_timewait_sock.h#L39" target="_blank" rel="external">这里</a>。可以看到 TIME WAIT 状态下连接的结构要比正常连接数据结构简单不少，在内核的数据结构最多百来字节，即使有 65535 个 TIME WAIT 的连接存在也占不了多少内存，几十 M 最多了。</p>
+<p>对于内存上的开销，进入 TIME WAIT 后应用层实际已经将连接相关信息销毁了，只是在 kernel 还维护有连接相关信息，所以内存占用只发生在 kernel 内。正常状态下的 Socket 结构比较复杂，<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/include/linux/tcp.h#L144" target="_blank" rel="external">可以看看这里 struct tcp_sock</a>，它里面使用的是<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/include/net/inet_connection_sock.h#L88" target="_blank" rel="external">struct inet_connection_sock</a>。Linux 为了减少 TIME WAIT 连接的开销，专门构造了更精简的 Socket 数据结构给进入 TIME WAIT 状态的连接用，参看<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/include/linux/tcp.h#L397" target="_blank" rel="external">这里 struct tcp_timewait_sock</a> ，它里面用的是<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/include/net/inet_timewait_sock.h#L39" target="_blank" rel="external">inet_timewait_sock</a>。可以看到 TIME WAIT 状态下连接的结构要比正常连接数据结构简单不少，在内核的数据结构最多百来字节，即使有 65535 个 TIME WAIT 的连接存在也占不了多少内存，几十 M 最多了。</p>
 <p>对于 CPU 的开销一般也不大，主要是在建立连接时<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/net/ipv4/inet_connection_sock.c#L282" target="_blank" rel="external">在 inet_csk_get_port 函数内查找一个可用端口上的开销</a>。</p>
 <p>所以 TIME WAIT 带来的最主要的副作用就是会占用端口，而端口数量有限，可能导致无法创建新连接的情况。</p>
 <h2 id="减少-TIME-WAIT-占用端口的方法"><a href="#减少-TIME-WAIT-占用端口的方法" class="headerlink" title="减少 TIME WAIT 占用端口的方法"></a>减少 TIME WAIT 占用端口的方法</h2><h3 id="SO-LINGER"><a href="#SO-LINGER" class="headerlink" title="SO_LINGER"></a>SO_LINGER</h3><p>对于应用层来说调用 <code>send()</code> 后数据并没有实际写入网络，而是先放到一个 buffer 当中，之后慢慢的往网络上写。所以会出现应用层想要关闭一个连接时，连接的 buffer 内还有数据没写出去，需要等待这部分数据写出。调用 <code>close()</code> 后等待 buffer 内数据全部写出去的时间叫做 Linger Time。Linger Time 结束后开始正常的 TCP 挥手过程。</p>
@@ -166,7 +166,7 @@ ga('send', 'pageview');
 <p>跟 tcp_tw_reuse 一样，由于 PAWS 机制的存在，缩短 TIME WAIT 后同一个 TCP Tuple 上前一个连接的数据包不会被后一个连接错误的接收。TIME WAIT 另一个要处理的 LAST ACK 的问题跟 tcp_tw_reuse 也一样，不会产生很大的问题，新的连接依然能正常建立，旧连接的数据也能保证都发到对方，只是旧连接上可能会产生一个 Connection reset by peer 的错误。那 tcp_tw_recycle 是不是就是安全的呢？为什么那么多人都不推荐开启这个机制呢？</p>
 <p>原因是前面说过 tcp_tw_reuse 新建立的连接会复用前一次连接保存的 Recent TSval 即最后一次收到数据的 Timestamp 值，这个值是 Per-Connection 的，即使有 NAT 的存在，也不会产生问题。比如当前机器是 A 要和 B C D 三台机器建立连接，假设 B C D 三台机器都在 NAT 之后，对 A 来说 B C D 使用的是相同的 IP 或者称为 Host。B C D 三台机器因为启动时间不同，A 与他们建立连接之后他们发来的 TSval 都不相同，有前有后。因为 A 是以 Per-Connection 的保存 TSval ，不会出现比如因为 C 机器时间比 B 晚，A 收到 B 的一条消息之后再收到 C 的消息而丢弃 C 的数据的情况。因为在 A 上为 B C D 三台机器分别保存了 Recent TSval，他们之间不会混淆。</p>
 <p>但是对于 tcp_tw_recycle 来说，TIME WAIT 之后连接信息快速的被回收，Per-Connection 保存的 TSval 记录就被清除了，取而代之的是另一个 Per-Host 的 TSval cache。这样在 NAT 存在的场景下就有问题了，还是上面的例子，B C D 在同一个 NAT 之后，具有相同的 Host，B 先跟 A 建立连接，此时 Per-Host cache 更新为 B 的机器时间，之后 C 来跟 A 建立连接(接收 incoming 连接请求相关逻辑可以看<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/net/ipv4/tcp_input.c#L6277" target="_blank" rel="external">tcp_conn_request 这个函数</a>)，读取 Per-Host Cache 后发现 C 的 SYN 中 TSval 比 Cache 的 TSval 时间要早，<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/net/ipv4/tcp_input.c#L6348" target="_blank" rel="external">于是直接默默丢弃 C 的 SYN</a>。这种情况会更新 LINUX_MIB_PAWSPASSIVEREJECTED 从而在 <code>/proc/net/netstat</code> 下的 PAWSPassive 看这个计数。在网上看到好些地方说到这个问题的时候都说会更新 PAWSEstab 计数，这是不对的。</p>
-<p>除了上面场景中 A 会丢弃 C 的 SYN 之外，还有别的引起问题的场景。比如 A 跟 B 建立了连接，Per-Host TSval 更新为 B 的时间，之后又要去跟 C 建立连接( IPv4 下创建 outgoing 连接相关逻辑可以看 <a href="http://elixir.free-electrons.com/linux/v4.11.8/source/net/ipv4/tcp_ipv4.c#L144" target="_blank" rel="external">tcp_v4_connect 函数</a>)，<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/net/ipv4/tcp_ipv4.c#L208" target="_blank" rel="external">A 发出 SYN 时会更新该连接的 Recent TSval 为缓存的 Per-Host TSval 时间</a>，即 B 的时间。因为 C 不会校验 A 发来的 SYN 的时间，所以 C 会正常回复 SYN//ACK 给 A，但 SYN//ACK 到达 A 之后，因为 SYN//ACK 带着 C 的 TSval，其时间晚于 B 的时间，导致 A 直接丢弃 C 发来的 SYN/ACK，并更新 LINUX_MIB_PAWSACTIVEREJECTED 计数，该计数能在 <code>/proc/net/netstat</code> 下的  PAWSActive 看到。</p>
+<p>除了上面场景中 A 会丢弃 C 的 SYN 之外，还有别的引起问题的场景。比如 A 跟 B 建立了连接，Per-Host TSval 更新为 B 的时间，之后又要去跟 C 建立连接( IPv4 下创建 outgoing 连接相关逻辑可以看 <a href="http://elixir.free-electrons.com/linux/v4.11.8/source/net/ipv4/tcp_ipv4.c#L144" target="_blank" rel="external">tcp_v4_connect 函数</a>)，<a href="http://elixir.free-electrons.com/linux/v4.11.8/source/net/ipv4/tcp_ipv4.c#L208" target="_blank" rel="external">A 发出 SYN 时会更新该连接的 Recent TSval 为缓存的 Per-Host TSval 时间</a>，即 B 的时间。假设 A 这一侧网络环境比较简单，IP 只有 A 一台机器在用，于是 C 校验 A 的 SYN 通过，所以 C 会正常回复 SYN//ACK 给 A，但 SYN//ACK 到达 A 之后，因为 SYN//ACK 带着 C 的 TSval，其时间晚于 B 的时间，导致 A 直接丢弃 C 发来的 SYN/ACK，并更新 LINUX_MIB_PAWSACTIVEREJECTED 计数，该计数能在 <code>/proc/net/netstat</code> 下的  PAWSActive 看到。</p>
 <p>所以，tcp_tw_recycle 是不推荐开启的，因为 NAT 在网络上大量的存在，配合 tcp_tw_recycle 会出现问题。</p>
 <h2 id="net-ipv4-tcp-max-tw-buckets-是什么"><a href="#net-ipv4-tcp-max-tw-buckets-是什么" class="headerlink" title="net.ipv4.tcp_max_tw_buckets 是什么"></a>net.ipv4.tcp_max_tw_buckets 是什么</h2><p>用于限制系统内处在 TIME WAIT 的最大连接数量，当 TIME WAIT 的连接超过限制之后连接会直接被关闭进入 CLOSED 状态，并会打印日志：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">TCP time wait bucket table overflow</div></pre></td></tr></table></figure></p>
 <p>可以看出这个限制有些暴力，得尽量去避免。还是之前的话，TIME WAIT 是有自己的作用的，暴力干掉它对我们并没有好处。</p>
@@ -176,16 +176,12 @@ ga('send', 'pageview');
 <p>实际上连接进入 TIME WAIT 之后是不可能再有数据发出的，因为能进入 TIME WAIT 一定是已经收到了对方的 FIN，此时对方期待的只有 ACK，发应用层数据会引起对方回复 RST。</p>
 <p>还有这里：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">The amount of time the kernel will wait before it closes the socket, regardless if it still has pending send data or not, is called the Linger Time. The Linger Time is globally configurable on most systems and by default rather long (two minutes is a common value you will find on many systems). It is also configurable per socket using the socket option SO_LINGER which can be used to make the timeout shorter or longer, and even to disable it completely.</div></pre></td></tr></table></figure></p>
 <p>关于 Linger Time 的描述跟 TIME WAIT 混淆了，Linger Time 并不是全局配置的，最长也不是 2 分钟，这个都是 TIME WAIT 的长度。Linger TIme 确实也有默认长度，但是个非常大的值，<a href="http://elixir.free-electrons.com/linux/latest/source/net/core/sock.c#L787" target="_blank" rel="external">参看这里</a>。所以基本能认为不设置 SO_LINGER 的话，<code>close()</code> 调用后会一直等到 buffer 内数据发完才会开始断开连接流程。</p>
-<p>但是瑕不掩瑜，这篇文章把 SO_REUSEADDR 和 SO_REUSEPORT 讲的很清楚。上面介绍过的 tcp_tw_reuse 和 tcp_tw_recycle 都是内核级参数，使用之后会在整个系统产生作用，所有创建的连接都受到影响。SO_REUSEADDR 和 SO_REUSEPORT 都是单个连接级的参数，使用后只能对单个连接产生影响，不是整个系统级别的。</p>
-<p>SO_REUSEADDR 有两个作用：</p>
-<ol>
-<li><code>bind()</code> socket 时可以绑定 “any address” IPv4 下是 <code>0.0.0.0</code> 或在 IPv6 下是<code>::</code>。SO_REUSEADDR 不开启的话，这个 any address 会和机器具体使用的 IP 冲突，如果绑定的端口一致会报错。比如本地有两个网卡，IP 分别是 192.168.0.1 和 10.0.0.1。如果不开启 SO_REUSEADDR，绑定 0.0.0.0 的某个端口比如 21 之后，再想绑定某个具体的 IP 192.168.0.1 的 21 端口就不允许了。而开启 SO_REUSEADDR 之后除非是 IP 和 Port 都被绑定过才会报错。有个表：</li>
-</ol>
+<p>但是瑕不掩瑜，这篇文章把 SO_REUSEADDR 和 SO_REUSEPORT 讲的很清楚。</p>
+<p>上面介绍过的 tcp_tw_reuse 和 tcp_tw_recycle 都是内核级参数，使用之后会在整个系统产生作用，所有创建的连接都受到影响。SO_REUSEADDR 和 SO_REUSEPORT 都是单个连接级的参数，使用后只能对单个连接产生影响，不是整个系统级别的。</p>
+<h3 id="SO-REUSEADDR"><a href="#SO-REUSEADDR" class="headerlink" title="SO_REUSEADDR"></a>SO_REUSEADDR</h3><p>有两个作用：<br>一个是 <code>bind()</code> socket 时可以绑定 “any address” IPv4 下是 <code>0.0.0.0</code> 或在 IPv6 下是<code>::</code>。SO_REUSEADDR 不开启的话，这个 any address 会和机器具体使用的 IP 冲突，如果绑定的端口一致会报错。比如本地有两个网卡，IP 分别是 192.168.0.1 和 10.0.0.1。如果不开启 SO_REUSEADDR，绑定 0.0.0.0 的某个端口比如 21 之后，再想绑定某个具体的 IP 192.168.0.1 的 21 端口就不允许了。而开启 SO_REUSEADDR 之后除非是 IP 和 Port 都被绑定过才会报错。有个表：</p>
 <img src="/2017/06/30/tcp-time-wait/so-reuseaddr.png" alt="来自: https://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t" title="来自: https://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t">
 <p>上表中全部默认使用 BSD 系统，并且是 socketA 先绑定，之后再绑定 socketB。ON/OFF表示 SO_REUSEADDR 是否开启不会影响结果。</p>
-<ol>
-<li>另一个作用是当连接主动断开后进入 TIME WAIT 状态，不开启 SO_REUSEADDR 的话，TIME WAIT 状态下连接的 IP 和 Port 也是被占用的，同一个 IP 和 Port 不能再次被 bind。但是开启 SO_REUSEADDR ，连接进入 TIME WAIT 后它使用的 IP 和 Port 能再次被应用 bind。bind 时会忽略同一个 IP 和 Port 的连接是否在 TIME WAIT 状态。</li>
-</ol>
+<p>另一个作用是当连接主动断开后进入 TIME WAIT 状态，不开启 SO_REUSEADDR 的话，TIME WAIT 状态下连接的 IP 和 Port 也是被占用的，同一个 IP 和 Port 不能再次被 bind。但是开启 SO_REUSEADDR ，连接进入 TIME WAIT 后它使用的 IP 和 Port 能再次被应用 bind。bind 时会忽略同一个 IP 和 Port 的连接是否在 TIME WAIT 状态。</p>
 <p>需要说明的是上面 SO_REUSEADDR 的行为是 BSD 系统上的，在 Linux 上会有所不同。在 Linux 上上图第六行的绑定是不行的，即先绑定 any address 再绑定 specific address 并且端口相同会被拒绝，反过来也一样，比如先绑定 192.168.1.0:21 再绑定 0.0.0.0:21 是被拒绝的。也就是说在 Linux 上上述 SO_REUSEADDR 第一个作用是没有用的，因为不即使不设置 SO_REUSEADDR 绑定两个不同的 IP 也是允许的。SO_REUSEADDR 在 BSD 上的第二个作用和在 Linux 上相同。除此之外，Linux 上的 SO_REUSEADDR 还有第三个作用，设置后允许同一个 specific addr 和 port 被多个 socket 绑定，行为和下面要说的 SO_REUSEPORT 类似。主要是因为 Linux 3.9 之前没有 SO_REUSEPORT，但又有 SO_REUSEPORT 的使用场景，于是 SO_REUSEADDR 发展出了 SO_REUSEPORT 的能力来替代 SO_REUSEPORT，但 Linux 3.9 之后有了专门的参数 SO_REUSEPORT，SO_REUSEADDR 则保持原状。</p>
 <h3 id="SO-REUSEPORT"><a href="#SO-REUSEPORT" class="headerlink" title="SO_REUSEPORT"></a>SO_REUSEPORT</h3><p>BSD 系统上设置后允许同一个 specific address, port 被多个 Socket 绑定，只要这些 Socket 绑定地址的时候都设置了 SO_REUSEPORT。听上去这个 SO_REUSEPORT 干的更像是 reuse addr 的活。如果占用 source addr 和 port 的连接处在 TIME WAIT 状态，并且没有设置 SO_REUSEPORT 那该地址和端口不能被另一个 socket 绑定。事实上 SO_REUSEPORT 和 TIME WAIT 没有什么关系，设置后能不能绑定某个端口和地址完全是看这个端口和地址现在有没有被别的连接使用，如果有则要看这个连接是否开启了 SO_REUSEPORT，跟这个连接被占用时处在 TCP 的什么状态完全无关。</p>
 <p>在 Linux 上相对 BSD 还要求地址和端口重用必须是同一个 user 之间，如果地址和端口被某个 Socket 占用，并且这个 Socket 是另一个 user 的，那即使该 Socket 绑定时开启了 SO_REUSEPORT 也不能再次被绑定。另外 Linux 还会做一些 load balancing 的工作，对 UDP 来说一个连接的数据包会被均匀分发到所有绑定同一个 addr 和 port 的 socket 上，对于 TCP 来说是 accept 会被均匀的分发到绑定在同一个 addr 和 port 的连接上。</p>
@@ -204,7 +200,7 @@ ga('send', 'pageview');
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/" data-id="cj4j1gqf700041nwxqkqasndf" class="article-share-link">Partager</a>
+      <a data-url="http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/" data-id="cj4j1gqf700041nwxqkqasndf" class="article-share-link">Share</a>
       
       
   <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Network/">Network</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/TCP/">TCP</a></li></ul>
@@ -217,7 +213,7 @@ ga('send', 'pageview');
   
   
     <a href="/2017/05/18/tcp-backlog/" id="article-nav-older" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Ancien</strong>
+      <strong class="article-nav-caption">Older</strong>
       <div class="article-nav-title">TCP Backlog</div>
     </a>
   
@@ -235,7 +231,7 @@ ga('send', 'pageview');
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Mot-clés</h3>
+    <h3 class="widget-title">Tags</h3>
     <div class="widget">
       <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Algorithm/">Algorithm</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Bug/">Bug</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Clojure/">Clojure</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JVM/">JVM</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Java/">Java</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Netty/">Netty</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Network/">Network</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TCP/">TCP</a></li></ul>
     </div>
@@ -245,7 +241,7 @@ ga('send', 'pageview');
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Nuage de mot-clés</h3>
+    <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
       <a href="/tags/Algorithm/" style="font-size: 10px;">Algorithm</a> <a href="/tags/Bug/" style="font-size: 15px;">Bug</a> <a href="/tags/Clojure/" style="font-size: 10px;">Clojure</a> <a href="/tags/JVM/" style="font-size: 10px;">JVM</a> <a href="/tags/Java/" style="font-size: 20px;">Java</a> <a href="/tags/Netty/" style="font-size: 10px;">Netty</a> <a href="/tags/Network/" style="font-size: 15px;">Network</a> <a href="/tags/TCP/" style="font-size: 15px;">TCP</a>
     </div>
@@ -264,7 +260,7 @@ ga('send', 'pageview');
   
     
   <div class="widget-wrap">
-    <h3 class="widget-title">Articles récents</h3>
+    <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
         
@@ -301,7 +297,7 @@ ga('send', 'pageview');
   <div class="outer">
     <div id="footer-info" class="inner">
       &copy; 2017 ylgrgyq<br>
-      Propulsé by <a href="http://hexo.io/" target="_blank">Hexo</a>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
     </div>
   </div>
 </footer>
