@@ -30,14 +30,14 @@ ga('create','UA-80224793-1','auto');ga('send','pageview');</script></head><body>
 <h3 id="报错信息-2"><a href="#报错信息-2" class="headerlink" title="报错信息"></a>报错信息</h3><p>当因为本地端口范围限制，无法分配出空闲端口时会报错：<br><code>Cannot assign requested address</code><br>这个错误信息跟端口不足时报的一样。</p>
 <h3 id="修改方法-1"><a href="#修改方法-1" class="headerlink" title="修改方法"></a>修改方法</h3><p>Linux 系统下，执行命令：</p>
 <p><code>sysctl -w net.ipv4.ip_local_port_range=&quot;15000 61000&quot;</code></p>
-<h2 id="端口复用"><a href="#端口复用" class="headerlink" title="端口复用"></a>端口复用</h2><p>TCP 连接断开之后主动发起 FIN 的一方最终会进入 TIME_WAIT 状态，处在这个状态时连接之前所占用的端口不能被下一个新的连接使用，必须等待一段时间之后才能使用。如果是单独测试并发连接峰值，减少 TIME_WAIT 连接数可能用处不大，但如果是连续的测试，每次关闭客户端准备再来下一轮测试时必须等足 TIME_WAIT 时间，如果 TIME_WAIT 时间比较长就比较烦，所以减少 TIME WAIT 对测试有一定好处。因为一般压测都是内网，所以 TIME WAIT 清理方面能稍微激进一些。TIME WAIT 相关内容可以参看：[[TCP TIME-WAIT]]。可以考虑：</p>
+<h2 id="端口复用"><a href="#端口复用" class="headerlink" title="端口复用"></a>端口复用</h2><p>TCP 连接断开之后主动发起 FIN 的一方最终会进入 TIME_WAIT 状态，处在这个状态时连接之前所占用的端口不能被下一个新的连接使用，必须等待一段时间之后才能使用。如果是单独测试并发连接峰值，减少 TIME_WAIT 连接数可能用处不大，但如果是连续的测试，每次关闭客户端准备再来下一轮测试时必须等足 TIME_WAIT 时间，如果 TIME_WAIT 时间比较长就比较烦，所以减少 TIME WAIT 对测试有一定好处。因为一般压测都是内网，所以 TIME WAIT 清理方面能稍微激进一些。TIME WAIT 相关内容可以参看：<a href="https://ylgrgyq.github.io/2017/06/30/tcp-time-wait/">TCP TIME-WAIT</a>。可以考虑：</p>
 <ol>
 <li>Client 开启 TCP Timestamps 后开启 net.ipv4.tcp_tw_reuse 或 net.ipv4.tcp_tw_recycle；</li>
 <li>将 net.ipv4.tcp_max_tw_buckets 设置的很小，TIME WAIT 连接超过该值后直接清理。因为一般测试都在内网，没有 NAP 的情况下 Per-Host 的 Timestamp 配合 PAWS 一般能消除跨连接数据包错误到达问题;</li>
 <li>考虑压测结束的时候由 Client 主动断开连接，并且设置 SO_LINGER 为 0，断开连接时候直接发 RST；</li>
 </ol>
 <h3 id="修改方法-2"><a href="#修改方法-2" class="headerlink" title="修改方法"></a>修改方法</h3><p>sysctl -w net.ipv4.tcp_timestamps=1<br>sysctl -w net.ipv4.tcp_tw_reuse=1<br>sysctl -w net.ipv4.tcp_tw_recycle=1<br>sysctl -w net.ipv4.tcp_max_tw_buckets=10000</p>
-<h2 id="TCP-Backlog"><a href="#TCP-Backlog" class="headerlink" title="TCP Backlog"></a>TCP Backlog</h2><p>TCP Backlog 的相关信息可以参考，[[TCP Backlog]]。实时通信服务也属于高并发服务，在搞活动、服务重启等时候可能出现大量用户同时和服务器创建连接的情况，所以也需要酌情调整 TCP Backlog 的大小。</p>
+<h2 id="TCP-Backlog"><a href="#TCP-Backlog" class="headerlink" title="TCP Backlog"></a>TCP Backlog</h2><p>TCP Backlog 的相关信息可以参考，<a href="https://ylgrgyq.github.io/2017/05/18/tcp-backlog/">TCP Backlog</a>。实时通信服务也属于高并发服务，在搞活动、服务重启等时候可能出现大量用户同时和服务器创建连接的情况，所以也需要酌情调整 TCP Backlog 的大小。</p>
 <h3 id="修改方法-3"><a href="#修改方法-3" class="headerlink" title="修改方法"></a>修改方法</h3><p>临时修改执行:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">sysctl -w net.core.somaxconn=2048</div><div class="line">sysctl -w net.ipv4.tcp_syncookies=1</div><div class="line">sysctl -w net.ipv4.tcp_max_syn_backlog=4096</div></pre></td></tr></table></figure>
 <p>永久性修改需要修改 /etc/sysctl.conf 文件，将上面修改值写在文件中。</p>
