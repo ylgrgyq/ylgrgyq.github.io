@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ylgrgyq.github.io/"/>
-  <updated>2017-07-24T00:05:59.000Z</updated>
+  <updated>2017-07-24T22:51:33.000Z</updated>
   <id>http://ylgrgyq.github.io/</id>
   
   <author>
@@ -20,16 +20,19 @@
     <link href="http://ylgrgyq.github.io/2017/07/24/linux-receive-packet-2/"/>
     <id>http://ylgrgyq.github.io/2017/07/24/linux-receive-packet-2/</id>
     <published>2017-07-24T00:04:39.000Z</published>
-    <updated>2017-07-24T00:05:59.000Z</updated>
+    <updated>2017-07-24T22:51:33.000Z</updated>
     
     <content type="html"><![CDATA[<p>前面说到数据是交给 <code>netif_receive_skb</code> 来做进一步的处理，而<code>netif_receive_skb</code> 基本没干什么事情，主要事情都在 <a href="http://elixir.free-electrons.com/linux/v4.4/source/net/core/dev.c#L3983" target="_blank" rel="external">netif_receive_skb_internal</a> 中完成。此时数据处理都还在软中断的 Handler 中，<code>top</code> 的 <code>si</code> 能反应出 CPU 在这个阶段花费的时间。</p>
 <p>如果没有开启 RPS 会调用 <a href="http://elixir.free-electrons.com/linux/v4.4/source/net/core/dev.c#L3958" target="_blank" rel="external">__netif_receive_skb</a>，进而调用 <a href="http://elixir.free-electrons.com/linux/v4.4/source/net/core/dev.c#L3806" target="_blank" rel="external">__netif_receive_skb_core</a> 这就基本上进入 Protocol Layer 了。</p>
-<p>如果开启了 RPS 则还有一大段路要走，先调用<a href="http://elixir.free-electrons.com/linux/v4.4/source/net/core/dev.c#L3482" target="_blank" rel="external">enqueue_to_backlog</a>准备将数据包放入 CPU 的 Backlog 中。入队之前会检查队列长度，如果队列长度大于 <code>net.core.netdev_max_backlog</code> 设置的值，则会丢弃数据包。同时也会检查 flow limit，超过的话也会丢弃数据包。丢弃的话会记录在 <code>/proc/net/softnet_stat</code> 中。入队的时候还会检查目标 CPU 的 NAPI 处理 backlog 的逻辑是否运行，没运行的话会通过 __napi_schedule 设置目标 CPU 处理 backlog 逻辑。之后会将数据包方式 backlog 发送 Inter-process Interrupt 去唤醒目标 CPU。</p>
+<p>如果开启了 RPS 则还有一大段路要走，先调用<a href="http://elixir.free-electrons.com/linux/v4.4/source/net/core/dev.c#L3482" target="_blank" rel="external">enqueue_to_backlog</a>准备将数据包放入 CPU 的 Backlog 中。入队之前会检查队列长度，如果队列长度大于 <code>net.core.netdev_max_backlog</code> 设置的值，则会丢弃数据包。同时也会检查 flow limit，超过的话也会丢弃数据包。丢弃的话会记录在 <code>/proc/net/softnet_stat</code> 中。入队的时候还会检查目标 CPU 的 NAPI 处理 backlog 的逻辑是否运行，没运行的话会通过 __napi_schedule 设置目标 CPU 处理 backlog 逻辑。之后发送 Inter-process Interrupt 去唤醒目标 CPU 来处理 CPU backlog 内的数据。</p>
 <p>CPU 处理 backlog 的方式和 CPU 去调用 driver 的 <code>poll</code> 函数拉取 Ring Buffer 数据方法类似，也是注册了一个 <code>poll</code> 函数，只是这个 “poll” 函数在这里是 <a href="http://elixir.free-electrons.com/linux/v4.4/source/net/core/dev.c#L4534" target="_blank" rel="external">process_backlog</a> 并且是操作系统 network 相关子系统启动时候注册的。<code>process_backlog</code> 内就是个循环，跟 driver 的 <code>poll</code> 一样不断的从 backlog 中取出数据来处理。调用 <a href="http://elixir.free-electrons.com/linux/v4.4/source/net/core/dev.c#L3958" target="_blank" rel="external">__netif_receive_skb</a>，进而调用 <a href="http://elixir.free-electrons.com/linux/v4.4/source/net/core/dev.c#L3806" target="_blank" rel="external">__netif_receive_skb_core</a> ，跟关闭 RPS 情况下逻辑一样。并且也会按照 budget 来判断要处理多久而退出循环。budget 跟之前控制 <code>netif_rx_action</code> 执行时间的 budget 配置一样，也是 <code>net.core.netdev_budget</code> 这个系统配置来控制。</p>
 <h3 id="net-core-netdev-max-backlog"><a href="#net-core-netdev-max-backlog" class="headerlink" title="net.core.netdev_max_backlog"></a>net.core.netdev_max_backlog</h3><p>上面说了将数据包放入 CPU 的 backlog 的时候需要看队列内当前积压的数据包有多少，超过 <code>net.core.netdev_max_backlog</code> 后要丢弃数据。所以可以根据需要来调整这个值：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">sysctl -w net.core.netdev_max_backlog=2000</div></pre></td></tr></table></figure></p>
 <p>需要注意的是，好多地方介绍在做压测的时候建议把这个值调高一点，但从我们上面的分析能看出来，这个值基本上只有在 RPS 开启的情况下才有用，没开启 RPS 的话设置这个值并没意义。</p>
-<h3 id="Flow-Limit"><a href="#Flow-Limit" class="headerlink" title="Flow Limit"></a>Flow Limit</h3><p>如果一个 Flow 或者说连接数据特别多，发送数据速度也快，可能会出现该 Flow 的数据包把所有 CPU 的 Backlog 都占满的情况，从而导致一些数据量少但延迟要求很高的数据包不能快速的被处理。所以就有了 Flow Limit 机制来限制每个 Flow 能排在 CPU Backlog 的总数，超过这个数值后，这个 Flow 就不能在放数据到 Backlog，必须丢弃。从而尽可能公平一些的处理所有 Flow 上的数据。</p>
-<p>开启 Flow Limit 首先要设置 flow table 大小：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">sysctl -w net.core.flow_limit_table_len=8192</div></pre></td></tr></table></figure></p>
+<h3 id="Flow-Limit"><a href="#Flow-Limit" class="headerlink" title="Flow Limit"></a>Flow Limit</h3><p>如果一个 Flow 或者说连接数据特别多，发送数据速度也快，可能会出现该 Flow 的数据包把所有 CPU 的 Backlog 都占满的情况，从而导致一些数据量少但延迟要求很高的数据包不能快速的被处理。所以就有了 Flow Limit 机制在排队比较严重的时候启用，来限制 Large Flow 并且偏向 small flow，让 small flow 的数据能尽快被处理，不要被 Large Flow 影响。</p>
+<p>该机制是每个 CPU 独立的，各 CPU 之间相互不影响，在稍后能看到开启这个机制也是能单独的对某个 CPU 开启。其原理是当 RPS 开启且 Flow Limit 开启后，默认当 CPU 的 backlog 占用超过一半的时候，Flow Limit 机制开始运作。这个 CPU 会对 Last 256 个 Packet 进行统计，如果某个 Flow 的 Packet 在这 256 个 Packet 中占比超过一半，就开始对这个 Flow 做限制，该 Flow 新来的 Packet 全部丢弃，别的 Flow 则正常放入 Backlog 正常处理。被限制的 Flow 连接继续保持，只是丢包增加。</p>
+<p>每个 CPU 在 Flow Limit 启用的时候会分配一个 Hash 表，为每个 Flow 计算占比的时候就是在收到 Packet 时候提取 Packet 内一些信息做 Hash，映射到这个 Hash 表中。Hash Function 跟 RPS 机制下为 Packet 找 CPU 用的 Hash Function 一样。Hash 表中的值是个 Counter，记录了在当前 Backlog 中这个 Flow 有多少 Packet 在排队。这里能看到，Hash 表的大小是有限的，其大小能够进行配置，如果配置的过小，而当前机器承载的 Flow 又很多，就会出现多个不同的 Flow Hash 到同一个 Counter 的情况，所以可能出现 False Positive 的情况。不过一般还好，因为一般机器同时处理的 Flow 不会特别多，多个 CPU 下能同时处理的 Flow 就更多了。</p>
+<p>开启 Flow Limit 首先要设置 Flow Limit 使用的 Hash 表大小：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">sysctl -w net.core.flow_limit_table_len=8192</div></pre></td></tr></table></figure>
 <p>默认值是 4096。</p>
 <p>之后需要为单个 CPU 开启 Flow Limit，这两个配置先后顺序不能搞错:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">echo f &gt; /proc/sys/net/core/flow_limit_cpu_bitmap</div></pre></td></tr></table></figure></p>
 <p>这个跟开启 RPS 的配置类似，也是个 bitmap 来标识哪些 CPU 开启 Flow Limit。如果希望所有 CPU 都开启就设置个大一点的值，不管有多少 CPU 都能覆盖。</p>
@@ -76,7 +79,7 @@
     <link href="http://ylgrgyq.github.io/2017/07/23/linux-receive-packet-1/"/>
     <id>http://ylgrgyq.github.io/2017/07/23/linux-receive-packet-1/</id>
     <published>2017-07-23T08:32:40.000Z</published>
-    <updated>2017-07-23T23:38:42.000Z</updated>
+    <updated>2017-07-24T02:29:04.000Z</updated>
     
     <content type="html"><![CDATA[<p>想看能不能完整梳理一下收消息过程。从 NIC 收数据开始，到触发软中断，交付数据包到 IP 层再经由路由机制到 TCP 层，最终交付用户进程。会尽力介绍收消息过程中的各种配置信息，以及各种监控数据。知道了收消息的完整过程，了解了各种配置，明白了各种监控数据后才有可能在今后的工作中做优化配置。</p>
 <p>所有参考内容会列在这个系列最后一篇文章中。</p>
@@ -142,9 +145,8 @@
 <p><a href="https://github.com/torvalds/linux/blob/v3.13/Documentation/networking/scaling.txt#L225" target="_blank" rel="external">Receive Flow Steering(RFS)</a> 一般和 RPS 配合一起工作。RPS 是将收到的 packet 发配到不同的 CPU 以实现负载均衡，但是可能同一个 Flow 的数据包正在被 CPU1 处理，但下一个数据包被发到 CPU2，会降低 CPU cache hit 比率并且会让数据包要从 CPU1 发到 CPU2 上。RFS 就是保证同一个 flow 的 packet 都会被路由到正在处理当前 Flow 数据的 CPU，从而提高 CPU cache 比率。<a href="https://github.com/torvalds/linux/blob/master/Documentation/networking/scaling.txt" target="_blank" rel="external">这篇文章</a> 把 RFS 机制介绍的挺好的。基本上就是收到数据后根据数据的一些信息做个 Hash 在这个 table 的 entry 中找到当前正在处理这个 flow 的 CPU 信息，从而将数据发给这个正在处理该 Flow 数据的 CPU 上，从而做到提高 CPU cache hit 率，避免数据在不同 CPU 之间拷贝。当然还有很多细节，请看上面链接。</p>
 <p>RFS 默认是关闭的，必须主动配置才能生效。正常来说开启了 RPS 都要再开启 RFS，以获取更好的性能。<a href="https://github.com/torvalds/linux/blob/master/Documentation/networking/scaling.txt" target="_blank" rel="external">这篇文章</a>也有说该怎么去开启 RFS 以及推荐的配置值。一个是要配置 rps_sock_flow_entries</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">sysctl -w net.core.rps_sock_flow_entries=32768</div></pre></td></tr></table></figure>
-<p>这个值依赖于系统期望的活跃连接数，注意是同一时间活跃的连接数，这个连接数正常来说会大大小于系统能承载的最大连接数，因为大部分连接不会同时活跃。该值建议是 32768，能覆盖大多数情况，每个活跃连接会分配一个 entry。除了这个之外还要配置 rps_flow_cnt：</p>
+<p>这个值依赖于系统期望的活跃连接数，注意是同一时间活跃的连接数，这个连接数正常来说会大大小于系统能承载的最大连接数，因为大部分连接不会同时活跃。该值建议是 32768，能覆盖大多数情况，每个活跃连接会分配一个 entry。除了这个之外还要配置 rps_flow_cnt，这个值是每个队列负责的 flow 最大数量，如果只有一个队列，则 rps_flow_cnt 一般是跟 rps_sock_flow_entries 的值一致，但是有多个队列的时候 rps_flow_cnt 值就是 rps_sock_flow_entries / N, N 是队列数量。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">echo 2048 &gt; /sys/class/net/eth0/queues/rx-0/rps_flow_cnt</div></pre></td></tr></table></figure>
-<p>配置的是每个队列分配的 entry 数量。</p>
 <p><a href="https://github.com/torvalds/linux/blob/v3.13/Documentation/networking/scaling.txt#L324" target="_blank" rel="external">Accelerated Receive Flow Steering (aRFS)</a> 类似 RFS 只是由硬件协助完成这个工作。aRFS 对于 RFS 就和 RSS 对于 RPS 一样，就是把 CPU 的工作挪到了硬件来做，从而不用浪费 CPU 时间，直接由 NIC 完成 Hash 值计算并将数据发到目标 CPU，所以快一点。NIC 必须暴露出来一个 <code>ndo_rx_flow_steer</code> 的函数用来实现 aRFS。</p>
 <h2 id="adaptive-RX-TX-IRQ-coalescing"><a href="#adaptive-RX-TX-IRQ-coalescing" class="headerlink" title="adaptive RX/TX IRQ coalescing"></a>adaptive RX/TX IRQ coalescing</h2><p>有的 NIC 支持这个功能，用来动态的将 IRQ 进行合并，以做到在数据包少的时候减少数据包的延迟，在数据包多的时候提高吞吐量。查看方法:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">ethtool -c eth1</div><div class="line">Coalesce parameters for eth1:</div><div class="line">Adaptive RX: off  TX: off</div><div class="line">stats-block-usecs: 0</div><div class="line">.....</div></pre></td></tr></table></figure>
@@ -152,23 +154,23 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">ethtool -C eth0 adaptive-rx on</div></pre></td></tr></table></figure>
 <p>并且有四个值需要设置：rx-usecs、rx-frames、rx-usecs-irq、rx-frames-irq，具体含义等需要用到的时候查吧。</p>
 <h2 id="Ring-Buffer-相关监控及配置"><a href="#Ring-Buffer-相关监控及配置" class="headerlink" title="Ring Buffer 相关监控及配置"></a>Ring Buffer 相关监控及配置</h2><h3 id="收到数据包统计"><a href="#收到数据包统计" class="headerlink" title="收到数据包统计"></a>收到数据包统计</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div></pre></td><td class="code"><pre><div class="line">ethtool -S eh0</div><div class="line">NIC statistics:</div><div class="line">     rx_packets: 792819304215</div><div class="line">     tx_packets: 778772164692</div><div class="line">     rx_bytes: 172322607593396</div><div class="line">     tx_bytes: 201132602650411</div><div class="line">     rx_broadcast: 15118616</div><div class="line">     tx_broadcast: 2755615</div><div class="line">     rx_multicast: 0</div><div class="line">     tx_multicast: 10</div></pre></td></tr></table></figure>
-<p>RX 就是收到数据，TX 是发出数据。还会展示 NIC 每个队列收发消息情况。<em>其中比较关键的是带有 drop 字样的统计和 fifo_errors 的统计</em> :</p>
+<p>RX 就是收到数据，TX 是发出数据。还会展示 NIC 每个队列收发消息情况。<strong>其中比较关键的是带有 drop 字样的统计和 fifo_errors 的统计</strong> :</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div></pre></td><td class="code"><pre><div class="line">tx_dropped: 0</div><div class="line">rx_queue_0_drops: 93</div><div class="line">rx_queue_1_drops: 874</div><div class="line">....</div><div class="line">rx_fifo_errors: 2142</div><div class="line">tx_fifo_errors: 0</div></pre></td></tr></table></figure>
 <p>看到发送队列和接收队列 drop 的数据包数量显示在这里。并且所有 queue_drops 加起来等于 rx_fifo_errors。所以总体上能通过 rx_fifo_errors 看到 Ring Buffer 上是否有丢包。如果有的话一方面是看是否需要调整一下每个队列数据的分配，或者是否要加大 Ring Buffer 的大小。</p>
-<p><code>/proc/net/dev</code>是另一个数据包相关统计：</p>
+<p><code>/proc/net/dev</code>是另一个数据包相关统计，不过这个统计比较难看：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div></pre></td><td class="code"><pre><div class="line">cat /proc/net/dev</div><div class="line">Inter-|   Receive                                                |  Transmit</div><div class="line"> face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed</div><div class="line">    lo: 14472296365706 10519818839    0    0    0     0          0         0 14472296365706 10519818839    0    0    0     0       0          0</div><div class="line">  eth1: 164650683906345 785024598362    0    0 2142     0          0         0 183711288087530 704887351967    0    0    0     0       0          0</div></pre></td></tr></table></figure>
 <h4 id="调整-Ring-Buffer-队列数量"><a href="#调整-Ring-Buffer-队列数量" class="headerlink" title="调整 Ring Buffer 队列数量"></a>调整 Ring Buffer 队列数量</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">ethtool -l eth0</div><div class="line">Channel parameters for eth0:</div><div class="line">Pre-set maximums:</div><div class="line">RX:             0</div><div class="line">TX:             0</div><div class="line">Other:          1</div><div class="line">Combined:       8</div><div class="line">Current hardware settings:</div><div class="line">RX:             0</div><div class="line">TX:             0</div><div class="line">Other:          1</div><div class="line">Combined:       8</div></pre></td></tr></table></figure>
 <p>看的是 Combined 这一栏是队列数量。Combined 按说明写的是多功能队列，猜想是能用作 RX 队列也能当做 TX 队列，但数量一共是 8 个？</p>
 <p>如果不支持 mutiqueue 的话上面执行下来会是：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">Channel parameters for eth0:</div><div class="line">Cannot get device channel parameters</div><div class="line">: Operation not supported</div></pre></td></tr></table></figure>
-<p>能自己设置 Ring Buffer 数量：</p>
+<p>看到上面 Ring Buffer 数量有 maximums 和 current settings，所以能自己设置 Ring Buffer 数量，但最大不能超过 maximus 值：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">sudo ethtool -L eth0 combined 8</div></pre></td></tr></table></figure>
 <p>如果支持对特定类型 RX 或 TX 设置队列数量的话可以执行：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">sudo ethtool -L eth0 rx 8</div></pre></td></tr></table></figure>
 <p><strong>需要注意的是</strong>，ethtool 的设置操作可能都要重启一下才能生效。</p>
 <h4 id="调整-Ring-Buffer-队列大小"><a href="#调整-Ring-Buffer-队列大小" class="headerlink" title="调整 Ring Buffer 队列大小"></a>调整 Ring Buffer 队列大小</h4><p>先查看当前 Ring Buffer 大小：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">ethtool -g eth0</div><div class="line">Ring parameters for eth0:</div><div class="line">Pre-set maximums:</div><div class="line">RX:   4096</div><div class="line">RX Mini:  0</div><div class="line">RX Jumbo: 0</div><div class="line">TX:   4096</div><div class="line">Current hardware settings:</div><div class="line">RX:   512</div><div class="line">RX Mini:  0</div><div class="line">RX Jumbo: 0</div><div class="line">TX:   512</div></pre></td></tr></table></figure>
-<p>看到 RX 和 TX 最大是 4096，当前值为 512。<em>队列越大丢包的可能越小，但数据延迟会增加</em></p>
+<p>看到 RX 和 TX 最大是 4096，当前值为 512。<strong>队列越大丢包的可能越小，但数据延迟会增加</strong></p>
 <p>设置 RX 队列大小：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">ethtool -G eth0 rx 4096</div></pre></td></tr></table></figure>
 <h4 id="调整-Ring-Buffer-队列的权重"><a href="#调整-Ring-Buffer-队列的权重" class="headerlink" title="调整 Ring Buffer 队列的权重"></a>调整 Ring Buffer 队列的权重</h4><p>NIC 如果支持 mutiqueue 的话 NIC 会根据一个 Hash 函数对收到的数据包进行分发。能调整不同队列的权重，用于分配数据。</p>
@@ -181,11 +183,11 @@
 <p>查看 tcp4 的 Hash 字段。</p>
 <p>也可以设置 Hash 字段：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">ethtool -N eth0 rx-flow-hash udp4 sdfn</div></pre></td></tr></table></figure>
-<p>sdfn 需要查看 ethtool 看其含义。</p>
+<p>sdfn 需要查看 ethtool 看其含义，还有很多别的配置值。</p>
 <h4 id="softirq-数统计"><a href="#softirq-数统计" class="headerlink" title="softirq 数统计"></a>softirq 数统计</h4><p>通过 <code>/proc/softirqs</code> 能看到每个 CPU 上 softirq 数量统计：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">cat /proc/softirqs</div><div class="line">                    CPU0       CPU1       </div><div class="line">          HI:          1          0</div><div class="line">       TIMER: 1650579324 3521734270</div><div class="line">      NET_TX:   10282064   10655064</div><div class="line">      NET_RX: 3618725935       2446</div><div class="line">       BLOCK:          0          0</div><div class="line">BLOCK_IOPOLL:          0          0</div><div class="line">     TASKLET:      47013      41496</div><div class="line">       SCHED: 1706483540 1003457088</div><div class="line">     HRTIMER:    1698047   11604871</div><div class="line">         RCU: 4218377992 3049934909</div></pre></td></tr></table></figure>
 <p>看到 NET_RX 就是收消息时候触发的 softirq，一般看这个统计是为了看看 softirq 在每个 CPU 上分布是否均匀，不均匀的话可能就需要做一些调整。比如上面看到 CPU0 和 CPU1 两个差距很大，原因是这个机器的 NIC 不支持 RSS，没有多个 Ring Buffer。开启 RPS 后就均匀多了。</p>
-<h4 id="IRQ-统计"><a href="#IRQ-统计" class="headerlink" title="IRQ 统计"></a>IRQ 统计</h4><p><code>/proc/interrupts</code> 能看到每个 CPU 的 IRQ 统计。可能就是看看 NAPI 的 IRQ 合并机制是否生效。看看 IRQ 是不是增长的很快。</p>
+<h4 id="IRQ-统计"><a href="#IRQ-统计" class="headerlink" title="IRQ 统计"></a>IRQ 统计</h4><p><code>/proc/interrupts</code> 能看到每个 CPU 的 IRQ 统计。一般就是看看 NIC 有没有支持 multiqueue 以及 NAPI 的 IRQ 合并机制是否生效。看看 IRQ 是不是增长的很快。</p>
 ]]></content>
     
     <summary type="html">
