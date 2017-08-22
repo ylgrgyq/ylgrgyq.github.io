@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://ylgrgyq.github.io/2017/07/02/RTM-max-connections/</loc>
+    
+    <lastmod>2017-08-22T22:56:02.000Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>http://ylgrgyq.github.io/2017/08/12/idea-import-gradle-project/</loc>
     
     <lastmod>2017-08-13T00:36:08.000Z</lastmod>
@@ -33,13 +40,6 @@
     <loc>http://ylgrgyq.github.io/2017/06/30/tcp-time-wait/</loc>
     
     <lastmod>2017-07-04T02:01:00.000Z</lastmod>
-    
-  </url>
-  
-  <url>
-    <loc>http://ylgrgyq.github.io/2017/07/02/RTM-max-connections/</loc>
-    
-    <lastmod>2017-07-02T01:36:49.000Z</lastmod>
     
   </url>
   

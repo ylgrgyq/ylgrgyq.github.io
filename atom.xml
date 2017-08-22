@@ -360,7 +360,7 @@
     <link href="http://ylgrgyq.github.io/2017/07/02/RTM-max-connections/"/>
     <id>http://ylgrgyq.github.io/2017/07/02/RTM-max-connections/</id>
     <published>2017-07-01T23:26:59.000Z</published>
-    <updated>2017-07-02T01:36:49.000Z</updated>
+    <updated>2017-08-22T22:56:02.000Z</updated>
     
     <content type="html"><![CDATA[<p>维持大量并发连接是实时通信系统的关键能力之一，而要想测出一台服务器到底能支撑多少连接有时候会比较麻烦，需要涉及到好几个系统参数的调整，在这里希望能将遇到过的各种参数调整记录一下，以备后用。</p>
 <p>以下所说连接均指 TCP 连接。</p>
@@ -381,6 +381,11 @@
 <p>普通用户默认使用的是 soft 限制，并且能够通过 ulimit -n 修改 soft 限制到最大跟 hard 一样，超过 hard 的话会报错：<br><code>ulimit: open files: cannot modify limit: Operation not permitted</code></p>
 <p>但普通用户只能<em>不可逆的</em>降低 hard 值，不能将 hard 值提高，只有 root 用户能将 hard 限制提高。目前没有看到修改 hard 值的命令，修改方法应该是只有通过系统调用 setrlimit，具体使用可以用 man 3 看看。</p>
 <p>Mac 下修改看上去好麻烦，我没有用过本地机器做过量特别大的压测，所以没有实际做过调整，留下一些线索供以后查阅：<br><a href="https://superuser.com/questions/302754/increase-the-maximum-number-of-open-file-descriptors-in-snow-leopard" target="_blank" rel="external">mac - Increase the maximum number of open file descriptors in Snow Leopard? - Super User</a><br><a href="https://www.chrissearle.org/2016/10/01/too-many-open-files-on-osx-macos/" target="_blank" rel="external">https://www.chrissearle.org/2016/10/01/too-many-open-files-on-osx-macos/</a></p>
+<h3 id="file-max-file-nr-nr-open"><a href="#file-max-file-nr-nr-open" class="headerlink" title="file-max, file-nr, nr_open"></a>file-max, file-nr, nr_open</h3><p>一般只要注意到 ulimit 里的 soft hard nofile 就好了，但有的时候如果真的用的连接特别特别多，可能会需要调整下面这几个值。这几个值限制的文件 Handle 最大数量都很大，默认为 1024 * 1024，但也能调整的更大：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">fs.file-max = 1000000</div><div class="line">fs.file-nr = 13920      0       1000000</div><div class="line">fs.nr_open = 1048576</div></pre></td></tr></table></figure>
+<p>file-max 是 kernel 能分配的文件 Handle 最大数量。file-nar 有三个值，动态变化的，第一个值是当前已经分配的文件 Handle 数量，第二个值是分配但是未使用的文件 Handle 数一般都是 0，最后一个实际就是 file-max 的值，表示系统最大分配的文件 Handle 数量。当系统内文件 Handle 数超过 file-max 后，一样会报 <code>Too many open files</code>。</p>
+<p>nr_open 是单个进程能分配的最大文件 Handle 数量，这个值一定比 file-max 小，并且一定要比 limits.conf 内的 soft nofile, hard nofile 大，不然 soft nofile, hard nofile 设置再大都没用。</p>
+<p>参考：<a href="https://www.kernel.org/doc/Documentation/sysctl/fs.txt" target="_blank" rel="external">https://www.kernel.org/doc/Documentation/sysctl/fs.txt</a></p>
 <h2 id="自动分配本地端口范围"><a href="#自动分配本地端口范围" class="headerlink" title="自动分配本地端口范围"></a>自动分配本地端口范围</h2><p>确定一个连接需要四个元素 Source IP + Source Port + Destination IP + Destination Port，一般客户端在连服务端的时候只要获取到服务端的 Destination IP 和 Destination Port 即可，Source IP 是客户端自己的 IP，客户端系统会自动分配一个 Source Port 来建立连接。而这个 Source Port 的选择范围是可通过 sysctl net.ipv4.ip_local_port_range 参数来定制的。可以执行一下这个命令来获取当前系统的设定，例如：</p>
 <p><code>net.ipv4.ip_local_port_range = 49152    65535</code></p>
 <p>即表示在与 remote 服务建立连接时，系统只能自动从 49152 至 65535 中选择一个作为 Local Port，也就是 Source Port。</p>
