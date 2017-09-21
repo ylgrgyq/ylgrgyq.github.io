@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://ylgrgyq.github.io/2017/09/21/java-threadlocal/</loc>
+    
+    <lastmod>2017-09-21T02:02:52.000Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>http://ylgrgyq.github.io/2017/07/02/RTM-max-connections/</loc>
     
     <lastmod>2017-08-22T22:56:02.000Z</lastmod>
