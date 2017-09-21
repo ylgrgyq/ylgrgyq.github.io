@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://ylgrgyq.github.io/"/>
-  <updated>2017-09-21T02:02:52.000Z</updated>
+  <updated>2017-09-21T02:06:19.000Z</updated>
   <id>http://ylgrgyq.github.io/</id>
   
   <author>
@@ -20,7 +20,7 @@
     <link href="http://ylgrgyq.github.io/2017/09/21/java-threadlocal/"/>
     <id>http://ylgrgyq.github.io/2017/09/21/java-threadlocal/</id>
     <published>2017-09-21T01:31:24.000Z</published>
-    <updated>2017-09-21T02:02:52.000Z</updated>
+    <updated>2017-09-21T02:06:19.000Z</updated>
     
     <content type="html"><![CDATA[<p>很多地方会用到 ThreadLocal 这个工具，最近看到关于它引起内存泄露的问题，于是对 ThreadLocal 的实现以及使用需要注意的问题做了一些调查，记录一下。</p>
 <h2 id="ThreadLocal-的实现"><a href="#ThreadLocal-的实现" class="headerlink" title="ThreadLocal 的实现"></a>ThreadLocal 的实现</h2><p>实现中几个关键的类和他们之间的引用关系大致上是下面这个图，在下面会说明这些箭头和方块的含义是什么。</p>
@@ -37,7 +37,7 @@
 <li>每个 ThreadLocal 对象的 threadLocalHashCode 不能挨得太近，不然冲突会很多。其计算方法类似于：</li>
 </ul>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line"><span class="keyword">private</span> <span class="keyword">static</span> AtomicInteger nextHashCode = <span class="keyword">new</span> AtomicInteger();</div><div class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> threadLocalHashCode = nextHashCode.getAndAdd(<span class="number">0x61c88647</span>)</div></pre></td></tr></table></figure>
-<p>0x61c88647 是个很神奇的数字。 斐波那契散列法</p>
+<p>0x61c88647 是个很神奇的数字，据说是来自斐波那契散列，但我还没有看懂，所以不细说了。</p>
 <ul>
 <li>ThreadLocalMap 一定不能完全装满，内置的数组一定要比实际存入的 ThreadLocal 对象至少大 1。事实上 ThreadLocalMap 的 Load Factor 是 2/3，超过之后会 rehash 并扩容。不能完全装满的原因是比如还是上面那张图，要获取一个 ThreadLocal 对象对应的 Value，并且这个目标 ThreadLocal 没有存入该 ThreadLocalMap，它的 threadLocalHashCode 刚好也 Hash 到了 ThreadLocalA 对象所在的 Slot，获取的时候先判断目标 ThreadLocal 是不是等于 ThreadLocalA，不是的话再判断是不是等于 ThreadLocalB，依次类推直到获取到一个空 Slot 从而才能知道该 ThreadLocal 没有存储在当前 ThreadLocalMap 中。如果 ThreadLocalMap 完全装满，就不能依赖这个 Slot 是否为空的判断了；</li>
 <li>清理 ThreadLocalMap 时候要保证将一个 index 指向的 Slot 清理之后，需要连带着将挨着该 index 的非空 Slot 内的 ThreadLocal 对象全部 Rehash 一遍。因为这些 Slot 内存储的 ThreadLocal 对象和 index 指向的 Slot 内存储的 ThreadLocal 对象都 Hash 到了同一个 ThreadLocalMap 内的 Slot，如果把开头 Slot 清理后面的不 Rehash 就无法找到他们了。</li>
