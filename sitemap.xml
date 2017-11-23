@@ -2,16 +2,16 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
-    <loc>http://ylgrgyq.github.io/2017/11/11/netty-resource-leack-detector/</loc>
+    <loc>http://ylgrgyq.github.io/2017/09/25/transmittable-thread-local/</loc>
     
-    <lastmod>2017-11-11T08:10:57.000Z</lastmod>
+    <lastmod>2017-11-23T11:01:58.000Z</lastmod>
     
   </url>
   
   <url>
-    <loc>http://ylgrgyq.github.io/2017/09/25/transmittable-thread-local/</loc>
+    <loc>http://ylgrgyq.github.io/2017/11/11/netty-resource-leack-detector/</loc>
     
-    <lastmod>2017-09-25T01:30:58.000Z</lastmod>
+    <lastmod>2017-11-11T08:10:57.000Z</lastmod>
     
   </url>
   
